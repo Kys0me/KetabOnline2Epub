@@ -7,9 +7,7 @@ import java.io.File
 fun epub(
     title: String,
     block: EpubBuilder.() -> Unit
-): Book {
-    return EpubBuilder(title).apply(block).build()
-}
+): Book = EpubBuilder(title).apply(block).build()
 
 fun Book.writeTo(file: File) {
     EpubWriter().write(this, file.outputStream())
