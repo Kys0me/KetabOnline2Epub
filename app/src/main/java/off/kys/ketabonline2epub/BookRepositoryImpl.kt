@@ -3,17 +3,49 @@ package off.kys.ketabonline2epub
 import android.content.Context
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import off.kys.ketabonline2epub.utils.encodeUrl
+import off.kys.ketabonline2epub.utils.readUrlAsText
+import off.kys.ketabonline2epub.utils.safeArray
+import off.kys.ketabonline2epub.utils.safeString
 import java.net.URI
 import java.util.logging.Level
 
 class BookRepositoryImpl(
     private val context: Context
 ) : BookRepository {
-    override fun searchBooks(query: String): List<BookItem> {
-        TODO("Not yet implemented")
+    override suspend fun searchBooks(query: String, page: Int): List<BookItem> {
+        val books = mutableListOf<BookItem>()
+        val apiUrl =
+            "https://backend.ketabonline.com/api/v2/books?is_active=1&is_deleted=0&page=1&limit=20&q=${query.encodeUrl()}&scope=titles&sort_field=_score&sort_direction=DESC"
+
+        val jsonText = apiUrl.readUrlAsText()
+        val searchResult = JsonParser.parseString(jsonText).asJsonObject
+        val data = searchResult["data"].asJsonArray
+        val status = searchResult["status"].asBoolean
+        val code = searchResult["code"].asInt
+
+        if (!status || code != 200)
+            throw IllegalStateException("Search failed with status $status and code $code")
+
+        books += data.map {
+            val book = it.asJsonObject
+            val author = book["authors"]
+                ?.safeArray()
+                ?.joinToString { author -> author.asJsonObject["name"].asString }
+                ?: ""
+
+            BookItem(
+                id = BookId(book["id"].asInt),
+                title = book["title"].asString,
+                author = author,
+                coverUrl = book["image_url"]?.safeString()
+            )
+        }
+
+        return books
     }
 
-    override fun getBookIndex(bookId: BookId): List<BookIndex> {
+    override suspend fun getBookIndex(bookId: BookId): List<BookIndex> {
         val bookIndices = mutableListOf<BookIndex>()
         var part = 1
         var keepFetching = true
@@ -60,14 +92,14 @@ class BookRepositoryImpl(
         return bookIndices
     }
 
-    override fun getBookData(bookId: BookId): BookData {
+    override suspend fun getBookData(bookId: BookId): BookData {
         val bookPages = mutableListOf<BookPage>()
-        val zipPath = context.cacheDir("$bookId.data.zip")
-        val dataJsonPath = context.cacheDir("/$bookId.data.json")
+        val zipPath = context.cacheDir("${bookId.value}.data.zip")
+        val dataJsonPath = context.cacheDir("${bookId.value}.data.json")
 
         try {
             // Download
-            val dataUrl = "$STORAGE_BASE_URL/$bookId/$bookId.data.zip"
+            val dataUrl = "$STORAGE_BASE_URL/${bookId.value}/${bookId.value}.data.zip"
             logger.info("Downloading data from: $dataUrl")
 
             val dataBytes = URI(dataUrl).toURL().readBytes()
@@ -75,7 +107,10 @@ class BookRepositoryImpl(
             logger.info("Download complete. Size: ${dataBytes.size} bytes.")
 
             // Unzip and Process
-            if (unzip(zipPath) == 0) {
+            val unzip = unzip(zipPath)
+
+            if (unzip != null) {
+                dataJsonPath.writeText(unzip.readText())
                 logger.info("Unzip successful. Reading JSON data...")
 
                 if (!dataJsonPath.exists()) {
@@ -120,10 +155,6 @@ class BookRepositoryImpl(
             logger.log(Level.SEVERE, "Failed to retrieve book data", e)
             throw e // Re-throw to stop main process
         }
-    }
-
-    override fun downloadBook(bookId: BookId) {
-        TODO("Not yet implemented")
     }
 
     private fun parseBookPage(page: JsonObject): BookPage {

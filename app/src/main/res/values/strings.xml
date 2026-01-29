@@ -2,4 +2,5 @@
     <string name="app_name">KetabOnline2Epub</string>
     <string name="book_name">Book Name</string>
     <string name="download">Download</string>
+    <string name="search">Search</string>
 </resources>

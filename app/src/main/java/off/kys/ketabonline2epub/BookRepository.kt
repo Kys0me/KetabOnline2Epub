@@ -2,12 +2,9 @@ package off.kys.ketabonline2epub
 
 interface BookRepository {
 
-    fun searchBooks(query: String): List<BookItem>
+    suspend fun searchBooks(query: String, page: Int): List<BookItem>
 
-    fun getBookIndex(bookId: BookId): List<BookIndex>
+    suspend fun getBookIndex(bookId: BookId): List<BookIndex>
 
-    fun getBookData(bookId: BookId): BookData
-
-    fun downloadBook(bookId: BookId)
-
+    suspend fun getBookData(bookId: BookId): BookData
 }
