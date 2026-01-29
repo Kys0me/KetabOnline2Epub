@@ -6,6 +6,7 @@ enum class DocumentType(val mimeType: String) {
     AUDIO("audio/*"),
     VIDEO("video/*"),
     PDF("application/pdf"),
+    EPUB("application/epub+zip"),
     IMAGE_PNG("image/png"),
     IMAGE_JPG("image/jpeg"),
     JSON("application/json"),
