@@ -48,7 +48,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.gson)
     implementation(libs.epublib.core) {
-        exclude(group = "xmlpull")
+        exclude(group = "xmlpull", module = "xmlpull")
+        exclude(group = "net.sf.kxml", module = "kxml2")
     }
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
