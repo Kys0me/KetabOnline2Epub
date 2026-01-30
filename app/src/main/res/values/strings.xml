@@ -5,6 +5,7 @@
     <string name="search">Search</string>
     <string name="book_cover">Book cover</string>
     <string name="default_untitled">بلا عنوان</string>
-    <string name="search_books">Search books...</string>
+    <string name="search_books">Search books…</string>
     <string name="clear">Clear</string>
+    <string name="try_again">Try Again</string>
 </resources>

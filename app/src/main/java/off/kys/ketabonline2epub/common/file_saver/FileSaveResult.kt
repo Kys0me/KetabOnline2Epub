@@ -1,4 +1,4 @@
-package off.kys.ketabonline2epub.save_file
+package off.kys.ketabonline2epub.common.file_saver
 
 sealed class FileSaveResult {
     object Success : FileSaveResult()

@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -13,11 +11,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import off.kys.ketabonline2epub.presentation.event.MainUiEvent
-import off.kys.ketabonline2epub.presentation.screen.main.components.BookListItem
-import off.kys.ketabonline2epub.presentation.screen.main.components.BookSearchToolbar
-import off.kys.ketabonline2epub.presentation.viewmodel.MainViewModel
 import off.kys.ketabonline2epub.common.file_saver.DocumentType
+import off.kys.ketabonline2epub.presentation.event.MainUiEvent
+import off.kys.ketabonline2epub.presentation.screen.main.components.BookSearchToolbar
+import off.kys.ketabonline2epub.presentation.screen.main.components.MainContent
+import off.kys.ketabonline2epub.presentation.viewmodel.MainViewModel
 import off.kys.ketabonline2epub.util.save_file.rememberFileSaver
 import org.koin.androidx.compose.koinViewModel
 
@@ -31,7 +29,7 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
         state.downloadedFile?.let { file ->
             saveBook.save(
                 fileName = "${state.bookId.value} - ${file.name}",
-                type = DocumentType.ALL,
+                type = DocumentType.EPUB,
                 data = file.readBytes()
             )
             viewModel.onEvent(MainUiEvent.DownloadHandled)
@@ -56,15 +54,10 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            // Results List
-            LazyColumn {
-                items(items = state.searchResults, key = { it.id.value }) { book ->
-                    BookListItem(
-                        book = book,
-                        onDownloadClick = { viewModel.onEvent(MainUiEvent.OnDownloadClicked(book)) }
-                    )
-                }
-            }
+            MainContent(
+                state = state,
+                onEvent = viewModel::onEvent
+            )
         }
     }
 }
