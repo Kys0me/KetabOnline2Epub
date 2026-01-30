@@ -1,11 +1,12 @@
 package off.kys.ketabonline2epub.util
 
-import off.kys.ketabonline2epub.common.logger
+import android.util.Log
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.util.logging.Level
 import java.util.zip.ZipInputStream
+
+private const val TAG = "File"
 
 /**
  * Extracts a ZIP archive to a specified directory.
@@ -21,7 +22,7 @@ fun unzip(
     deleteWhenFinish: Boolean = true,
 ): File? {
     if (!zipFile.exists()) {
-        logger.warning("Unzip failed: File ${zipFile.absolutePath} does not exist.")
+        Log.w(TAG, "Unzip failed: File ${zipFile.absolutePath} does not exist.")
         return null
     }
 
@@ -55,7 +56,7 @@ fun unzip(
 
         return extractedFile
     } catch (e: Exception) {
-        logger.log(Level.SEVERE, "Error unzipping file", e)
+        Log.e(TAG, "Error unzipping file", e)
         return null
     }
 }

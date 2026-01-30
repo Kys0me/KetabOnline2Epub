@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package off.kys.ketabonline2epub.util.extensions
 
 import com.google.gson.JsonArray
@@ -16,6 +18,22 @@ fun JsonElement?.safeString(): String? =
         this == null -> null
         this.isJsonNull -> null
         this.isJsonPrimitive && this.asJsonPrimitive.isString -> this.asString
+        else -> null
+    }
+
+/**
+ * Safely extracts an Int from a [JsonElement].
+ *
+ * This avoids crashes by verifying that the element is not null,
+ * is not a JSON null literal, and is a valid JSON primitive integer.
+ *
+ * @return The integer value if valid; null otherwise.
+ */
+fun JsonElement?.safeInt(): Int? =
+    when {
+        this == null -> null
+        this.isJsonNull -> null
+        this.isJsonPrimitive && this.asJsonPrimitive.isNumber -> this.asInt
         else -> null
     }
 

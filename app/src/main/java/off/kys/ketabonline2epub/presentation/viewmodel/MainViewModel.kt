@@ -1,6 +1,7 @@
 package off.kys.ketabonline2epub.presentation.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -10,13 +11,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import off.kys.ketabonline2epub.R
-import off.kys.ketabonline2epub.common.logger
 import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.domain.repository.BookRepository
 import off.kys.ketabonline2epub.domain.repository.EpubConverterRepository
 import off.kys.ketabonline2epub.presentation.event.MainUiEvent
 import off.kys.ketabonline2epub.presentation.state.MainUiState
-import java.util.logging.Level
+
+private const val TAG = "MainViewModel"
 
 /**
  * The primary ViewModel for managing the book search and EPUB generation lifecycle.
@@ -76,7 +77,7 @@ class MainViewModel(
                 val results = bookRepository.searchBooks(currentName, 1)
                 _uiState.update { it.copy(searchResults = results, isLoading = false) }
             } catch (e: Exception) {
-                logger.log(Level.SEVERE, "Search failed", e)
+                Log.e(TAG, "Search failed", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -120,7 +121,7 @@ class MainViewModel(
                     )
                 }
             } catch (e: Exception) {
-                logger.log(Level.SEVERE, "Download failed", e)
+                Log.e(TAG, "Download failed", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,

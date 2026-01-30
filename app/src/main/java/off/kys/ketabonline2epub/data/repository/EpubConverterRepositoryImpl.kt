@@ -1,7 +1,7 @@
 package off.kys.ketabonline2epub.data.repository
 
 import android.content.Context
-import off.kys.ketabonline2epub.common.logger
+import android.util.Log
 import off.kys.ketabonline2epub.domain.model.BookData
 import off.kys.ketabonline2epub.domain.model.BookIndex
 import off.kys.ketabonline2epub.domain.model.BookPage
@@ -13,73 +13,82 @@ import off.kys.ketabonline2epub.util.extensions.cacheDir
 import off.kys.ketabonline2epub.util.extensions.normalize
 import java.io.File
 
+private const val TAG = "EpubConverterRepository"
+
 class EpubConverterRepositoryImpl(
     private val context: Context
 ) : EpubConverterRepository {
+
     override fun generate(
         bookData: BookData,
         chapters: List<TableOfContent>
     ): File {
+        Log.d(TAG, "Starting EPUB generation for: ${bookData.title}")
         val outputFile = context.cacheDir("${bookData.title}.epub")
 
-        epub(bookData.title) {
-            author(bookData.author)
-            language("ar")
+        try {
+            epub(bookData.title) {
+                author(bookData.author)
+                language("ar")
 
-            if (bookData.cover.isNotEmpty) {
-                cover(bookData.cover)
-            }
-
-            chapter(title = "بطاقة الكتاب") {
-                p {
-                    append("عنوان الكتاب: ")
-                    append(bookData.title)
-                    append("<br/>")
-                    append("عدد الصفحات: ")
-                    append(bookData.pages.size.toString())
-                    append("<br/>")
-                    append("المؤلف: ")
-                    append(bookData.author)
-                    append("<br/>")
-                    if (bookData.description != null) {
-                        append("وصف الكتاب: ")
-                        append(bookData.description.normalize())
-                        append("<br/>")
-                    }
-                    if (bookData.info != null) {
-                        append("حول الكتاب: ")
-                        append(bookData.info.normalize())
-                        append("<br/>")
-                    }
-                }
-            }
-
-            if (bookData.cover.isNotEmpty)
-                chapter("الغلاف") {
-                    img(
-                        src = this@epub.bookCover?.href ?: return@chapter,
-                        alt = "غلاف الكتاب"
-                    )
+                if (bookData.cover.isNotEmpty) {
+                    cover(bookData.cover)
                 }
 
-            chapters.forEach { ch ->
-                chapter(title = ch.title) {
-                    ch.pages.forEach { page ->
-                        p {
-                            append(page.content.normalize())
-                            append(" [م ")
-                            append(page.part)
-                            append(" ص ")
-                            append(page.page)
-                            append(" ]")
+                chapter(title = "بطاقة الكتاب") {
+                    p {
+                        append("عنوان الكتاب: ")
+                        append(bookData.title)
+                        append("<br/>")
+                        append("عدد الصفحات: ")
+                        append(bookData.pages.size.toString())
+                        append("<br/>")
+                        append("المؤلف: ")
+                        append(bookData.author)
+                        append("<br/>")
+                        if (bookData.description != null) {
+                            append("وصف الكتاب: ")
+                            append(bookData.description.normalize())
+                            append("<br/>")
                         }
-                        br()
+                        if (bookData.info != null) {
+                            append("حول الكتاب: ")
+                            append(bookData.info.normalize())
+                            append("<br/>")
+                        }
                     }
                 }
-            }
-        }.writeTo(outputFile)
 
-        logger.info("EPUB saved to: $outputFile")
+                if (bookData.cover.isNotEmpty)
+                    chapter("الغلاف") {
+                        img(
+                            src = this@epub.bookCover?.href ?: return@chapter,
+                            alt = "غلاف الكتاب"
+                        )
+                    }
+
+                chapters.forEach { ch ->
+                    chapter(title = ch.title) {
+                        ch.pages.forEach { page ->
+                            p {
+                                append(page.content.normalize())
+                                append(" [م ")
+                                append(page.part)
+                                append(" ص ")
+                                append(page.page)
+                                append(" ]")
+                            }
+                            br()
+                        }
+                    }
+                }
+            }.writeTo(outputFile)
+
+            Log.i(TAG, "Successfully generated EPUB: ${outputFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to generate EPUB for ${bookData.title}", e)
+        }
+
         return outputFile
     }
 
@@ -88,6 +97,8 @@ class EpubConverterRepositoryImpl(
         pages: List<BookPage>,
         defaultTitle: String
     ): List<TableOfContent> {
+        Log.d(TAG, "Building chapters: Indices count = ${indices.size}, Pages count = ${pages.size}")
+
         // Sorting to ensure linear processing
         val sortedIndices = indices.sortedBy { it.pageId }
         val sortedPages = pages.sortedBy { it.id }
@@ -112,7 +123,8 @@ class EpubConverterRepositoryImpl(
         if (sortedIndices.isNotEmpty()) {
             val beforeFirst = takePagesUntil(sortedIndices.first().pageId)
             if (beforeFirst.isNotEmpty()) {
-                chapters + TableOfContent(title = defaultTitle, pages = beforeFirst)
+                Log.v(TAG, "Adding prefix chapter with ${beforeFirst.size} pages")
+                chapters.add(TableOfContent(title = defaultTitle, pages = beforeFirst))
             }
         }
 
@@ -124,16 +136,21 @@ class EpubConverterRepositoryImpl(
             val chapterPages = takePagesUntil(next?.pageId)
 
             if (chapterPages.isNotEmpty()) {
-                chapters + TableOfContent(title = current.title, pages = chapterPages)
+                Log.v(TAG, "Mapping chapter: ${current.title} (${chapterPages.size} pages)")
+                chapters.add(TableOfContent(title = current.title, pages = chapterPages))
+            } else {
+                Log.w(TAG, "Chapter '${current.title}' has no associated pages.")
             }
         }
 
         // 3. Remaining pages after the last chapter
         val remaining = takePagesUntil(null)
         if (remaining.isNotEmpty()) {
-            chapters + TableOfContent(title = defaultTitle, pages = remaining)
+            Log.v(TAG, "Adding remaining ${remaining.size} pages to trailing chapter")
+            chapters.add(TableOfContent(title = defaultTitle, pages = remaining))
         }
 
+        Log.d(TAG, "Finished building ${chapters.size} total chapters")
         return chapters
     }
 }

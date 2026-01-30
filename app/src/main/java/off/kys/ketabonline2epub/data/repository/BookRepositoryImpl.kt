@@ -1,12 +1,12 @@
 package off.kys.ketabonline2epub.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import off.kys.ketabonline2epub.common.Constants
-import off.kys.ketabonline2epub.common.logger
 import off.kys.ketabonline2epub.domain.model.Base64Image
 import off.kys.ketabonline2epub.domain.model.BookData
 import off.kys.ketabonline2epub.domain.model.BookId
@@ -21,10 +21,11 @@ import off.kys.ketabonline2epub.util.extensions.readUrlAsText
 import off.kys.ketabonline2epub.util.extensions.safeArray
 import off.kys.ketabonline2epub.util.extensions.safeString
 import off.kys.ketabonline2epub.util.extensions.toPlainText
+import off.kys.ketabonline2epub.util.readTextFromUrl
 import off.kys.ketabonline2epub.util.unzip
 import java.io.FileReader
-import java.net.URI
-import java.util.logging.Level
+
+private const val TAG = "BookRepositoryImpl"
 
 class BookRepositoryImpl(
     private val context: Context
@@ -63,46 +64,48 @@ class BookRepositoryImpl(
 
     override suspend fun getBookIndex(bookId: BookId): List<BookIndex> {
         val bookIndices = mutableListOf<BookIndex>()
-        var part = 1
-        var keepFetching = true
+        val url = "${Constants.API_BASE_URL}/books/${bookId.value}/index"
 
-        while (keepFetching) {
-            val url = "${Constants.API_BASE_URL}/books/${bookId.value}/index?part=$part&is_recursive=1"
-            logger.fine("Fetching index part $part from: $url")
+        Log.d(TAG, "Fetching index from: $url")
 
-            try {
-                val indexJson = URI(url).toURL().readText()
-                val rootIndex = JsonParser.parseString(indexJson).asJsonObject
-                val status = rootIndex["status"].asBoolean
-                val code = rootIndex["code"].asInt
+        try {
+            val indexJson = readTextFromUrl(url)
+            val rootIndex = JsonParser.parseString(indexJson).asJsonObject
+            val status = rootIndex["status"].asBoolean
+            val code = rootIndex["code"].asInt
 
-                if (!status || code != 200) {
-                    logger.warning("Stopping index fetch. Status: $status, Code: $code")
-                    keepFetching = false
-                    continue
-                }
+            Log.d(TAG, "Index parsing. status: $status, code: $code")
 
-                val data = rootIndex["data"].asJsonArray
-                if (data.size() == 0) {
-                    keepFetching = false
-                    continue
-                }
+            Log.d(TAG, "Json text:\n $indexJson")
 
-                data.forEach { index ->
-                    val obj = index.asJsonObject
-                    bookIndices + BookIndex(
-                        title = obj["title"].asString,
-                        pageId = obj["page_id"].asInt,
-                        page = obj["page"].asInt,
-                        part = obj["part"]?.asInt ?: part
-                    )
-                }
-                part++
-
-            } catch (e: Exception) {
-                logger.log(Level.SEVERE, "Error fetching index part $part", e)
-                keepFetching = false
+            if (!status || code != 200) {
+                Log.w(TAG, "Stopping index fetch. Status: $status, Code: $code")
+                return bookIndices
             }
+
+            val data = rootIndex["data"].asJsonArray
+
+            if (data.isEmpty) {
+                Log.w(TAG, "Stopping index fetch. Data is empty")
+                return bookIndices
+            }
+
+            data.forEach { index ->
+                val obj = index.asJsonObject
+
+                bookIndices += BookIndex(
+                    title = obj["title"].asString,
+                    pageId = obj["page_id"].asInt,
+                    page = obj["page"].asInt,
+                    part = obj["part_name"]?.safeString()?.toIntOrNull() ?: run {
+                        Log.w(TAG, "Invalid part name: ${obj["part_name"]}")
+                        1
+                    }
+                )
+                Log.d(TAG, "Parsed index: ${bookIndices.last()}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG,  "Error fetching index", e)
         }
 
         return bookIndices
@@ -114,7 +117,7 @@ class BookRepositoryImpl(
 
         try {
             val dataUrl = "${Constants.STORAGE_BASE_URL}/${bookId.value}/${bookId.value}.data.zip"
-            logger.info("Downloading data from: $dataUrl")
+            Log.d(TAG, "Downloading data from: $dataUrl")
             downloadFile(dataUrl, zipPath.absolutePath)
 
             val dataJsonPath = unzip(zipPath) ?: throw RuntimeException("Failed to unzip book data.")
@@ -123,7 +126,7 @@ class BookRepositoryImpl(
                 throw IllegalStateException("Expected data file $dataJsonPath not found.")
             }
 
-            logger.info("Unzip successful. Streaming JSON data...")
+            Log.d(TAG, "Unzip successful. Streaming JSON data...")
 
             // Local variables to hold data as we stream
             var bookTitle = ""
@@ -182,7 +185,7 @@ class BookRepositoryImpl(
             )
 
         } catch (e: Exception) {
-            logger.log(Level.SEVERE, "Failed to retrieve book data", e)
+            Log.d(TAG, "Failed to retrieve book data", e)
             throw e
         }
     }
