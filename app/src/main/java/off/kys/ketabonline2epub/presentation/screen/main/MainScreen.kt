@@ -23,6 +23,7 @@ import org.koin.androidx.compose.koinViewModel
 fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val saveBook = rememberFileSaver()
+    val isDownloading = state.isLoading && state.searchResults.isNotEmpty()
 
     // Handle File Saving Side Effect
     LaunchedEffect(key1 = state.downloadedFile) {
@@ -50,9 +51,7 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                 .fillMaxSize()
         ) {
             // Loading Indicator
-            if (state.isLoading && state.searchResults.isNotEmpty()) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
+            if (isDownloading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 
             MainContent(
                 state = state,

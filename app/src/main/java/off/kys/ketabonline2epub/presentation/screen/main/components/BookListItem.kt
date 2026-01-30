@@ -31,15 +31,16 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.R
+import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.util.extensions.toPlainText
 
 @Composable
 fun BookListItem(
+    modifier: Modifier = Modifier,
     book: BookItem,
-    onDownloadClick: () -> Unit,
-    modifier: Modifier = Modifier
+    enabled: Boolean = true,
+    onDownloadClick: () -> Unit
 ) {
     ElevatedCard( // Switch to ElevatedCard
         modifier = modifier
@@ -107,7 +108,8 @@ fun BookListItem(
                     onClick = onDownloadClick,
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                    ),
+                    enabled = enabled,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.round_download_24),

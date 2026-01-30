@@ -17,6 +17,7 @@ fun MainContent(
     onEvent: (MainUiEvent) -> Unit
 ) {
     val listState = rememberLazyListState()
+    val isDownloading = state.isLoading && state.searchResults.isNotEmpty()
 
     // Scroll to top when results change
     LaunchedEffect(key1 = state.searchResults) {
@@ -37,8 +38,10 @@ fun MainContent(
                 items(items = state.searchResults, key = { it.id.value }) { book ->
                     BookListItem(
                         book = book,
-                        onDownloadClick = { onEvent(MainUiEvent.OnDownloadClicked(book)) }
-                    )
+                        enabled = isDownloading.not()
+                    ) {
+                        onEvent(MainUiEvent.OnDownloadClicked(book))
+                    }
                 }
             }
         }
