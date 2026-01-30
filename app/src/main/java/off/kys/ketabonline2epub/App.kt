@@ -1,6 +1,7 @@
 package off.kys.ketabonline2epub
 
 import android.app.Application
+import off.kys.ketabonline2epub.di.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 

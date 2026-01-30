@@ -14,7 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KetabOnline2Epub">
         <activity
-            android:name=".MainActivity"
+            android:name=".presentation.activity.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.KetabOnline2Epub">
             <intent-filter>
