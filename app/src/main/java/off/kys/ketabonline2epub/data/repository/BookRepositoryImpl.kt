@@ -196,8 +196,8 @@ class BookRepositoryImpl(
         val rawPart = page["part"]
         val pagePart = when {
             rawPart == null || rawPart.isJsonNull -> null
-            rawPart.isJsonObject -> rawPart.asJsonObject["name"]?.asString?.toInt()
-            rawPart.isJsonArray -> rawPart.asJsonArray.firstOrNull()?.asJsonObject?.get("name")?.asString?.toInt()
+            rawPart.isJsonObject -> rawPart.asJsonObject["name"]?.asString?.toIntOrNull()
+            rawPart.isJsonArray -> rawPart.asJsonArray.firstOrNull()?.asJsonObject?.get("name")?.asString?.toIntOrNull()
             else -> null
         } ?: 1
 
