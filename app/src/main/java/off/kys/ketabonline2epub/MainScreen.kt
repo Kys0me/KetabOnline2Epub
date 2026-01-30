@@ -95,7 +95,9 @@ fun BookListItem(book: BookItem, onDownloadClick: () -> Unit) {
     ListItem(
         leadingContent = {
             val bookCover =
-                ImageRequest.Builder(context).data(book.coverUrl?.ifNull { R.drawable.book_cover })
+                ImageRequest.Builder(context)
+                    .data(book.coverUrl?.ifNull { R.drawable.book_cover })
+                    .build()
 
             AsyncImage(
                 modifier = Modifier.size(
