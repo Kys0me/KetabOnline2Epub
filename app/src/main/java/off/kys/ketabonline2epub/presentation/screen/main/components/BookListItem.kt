@@ -33,6 +33,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.R
+import off.kys.ketabonline2epub.util.extensions.toPlainText
 
 @Composable
 fun BookListItem(
@@ -71,7 +72,7 @@ fun BookListItem(
             },
             headlineContent = {
                 Text(
-                    text = book.title,
+                    text = book.title.toPlainText(),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis

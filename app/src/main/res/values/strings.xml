@@ -8,4 +8,6 @@
     <string name="search_books">Search books…</string>
     <string name="clear">Clear</string>
     <string name="try_again">Try Again</string>
+    <string name="no_results_found">No results found</string>
+    <string name="try_searching_for_a_book_title_or_author">Try searching for a book title or author.</string>
 </resources>
