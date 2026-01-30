@@ -1,7 +1,6 @@
 package off.kys.ketabonline2epub
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,28 +46,19 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
         }
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(
+        topBar = {
+            BookSearchToolbar(
+                mainUiState = state,
+                onEvent = viewModel::onEvent
+            )
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // Search Bar
-            Row {
-                TextField(
-                    modifier = Modifier.weight(1f),
-                    value = state.bookName,
-                    onValueChange = { viewModel.onEvent(MainUiEvent.OnBookNameChange(it)) },
-                    label = { Text("Book Name") }
-                )
-                TextButton(
-                    onClick = { viewModel.onEvent(MainUiEvent.OnSearchClicked) },
-                    enabled = !state.isLoading
-                ) {
-                    Text("Search")
-                }
-            }
-
             // Loading Indicator
             if (state.isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
