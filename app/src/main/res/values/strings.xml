@@ -3,4 +3,6 @@
     <string name="book_name">Book Name</string>
     <string name="download">Download</string>
     <string name="search">Search</string>
+    <string name="book_cover">Book cover</string>
+    <string name="default_untitled">بلا عنوان</string>
 </resources>

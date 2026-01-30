@@ -52,6 +52,8 @@ dependencies {
         exclude(group = "xmlpull", module = "xmlpull")
         exclude(group = "net.sf.kxml", module = "kxml2")
     }
+    implementation(platform(libs.koin.bom))
+    implementation(libs.bundles.koin)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.jsoup)
