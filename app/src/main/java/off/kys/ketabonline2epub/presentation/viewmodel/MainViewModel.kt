@@ -109,7 +109,6 @@ class MainViewModel(
                 _uiState.update {
                     it.copy(
                         bookId = book.id,
-                        bookName = book.title,
                         isLoading = false,
                         downloadedFile = file,
                     )
