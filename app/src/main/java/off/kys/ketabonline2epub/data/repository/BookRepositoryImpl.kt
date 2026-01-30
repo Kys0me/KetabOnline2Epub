@@ -3,6 +3,8 @@ package off.kys.ketabonline2epub.data.repository
 import android.content.Context
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 import off.kys.ketabonline2epub.common.Constants
 import off.kys.ketabonline2epub.common.logger
 import off.kys.ketabonline2epub.domain.model.Base64Image
@@ -12,6 +14,7 @@ import off.kys.ketabonline2epub.domain.model.BookIndex
 import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.domain.model.BookPage
 import off.kys.ketabonline2epub.domain.repository.BookRepository
+import off.kys.ketabonline2epub.util.downloadFile
 import off.kys.ketabonline2epub.util.extensions.cacheDir
 import off.kys.ketabonline2epub.util.extensions.encodeUrl
 import off.kys.ketabonline2epub.util.extensions.readUrlAsText
@@ -19,6 +22,7 @@ import off.kys.ketabonline2epub.util.extensions.safeArray
 import off.kys.ketabonline2epub.util.extensions.safeString
 import off.kys.ketabonline2epub.util.extensions.toPlainText
 import off.kys.ketabonline2epub.util.unzip
+import java.io.FileReader
 import java.net.URI
 import java.util.logging.Level
 
@@ -107,65 +111,79 @@ class BookRepositoryImpl(
     override suspend fun getBookData(bookId: BookId): BookData {
         val bookPages = mutableListOf<BookPage>()
         val zipPath = context.cacheDir("${bookId.value}.data.zip")
-        val dataJsonPath = context.cacheDir("${bookId.value}.data.json")
 
         try {
-            // Download
             val dataUrl = "${Constants.STORAGE_BASE_URL}/${bookId.value}/${bookId.value}.data.zip"
             logger.info("Downloading data from: $dataUrl")
+            downloadFile(dataUrl, zipPath.absolutePath)
 
-            val dataBytes = URI(dataUrl).toURL().readBytes()
-            zipPath.writeBytes(dataBytes)
-            logger.info("Download complete. Size: ${dataBytes.size} bytes.")
+            val dataJsonPath = unzip(zipPath) ?: throw RuntimeException("Failed to unzip book data.")
 
-            // Unzip and Process
-            val unzip = unzip(zipPath)
-
-            if (unzip != null) {
-                dataJsonPath.writeText(unzip.readText())
-                logger.info("Unzip successful. Reading JSON data...")
-
-                if (!dataJsonPath.exists()) {
-                    throw IllegalStateException("Expected data file $dataJsonPath not found after unzipping.")
-                }
-
-                val dataJson = dataJsonPath.readText()
-                val rootData = JsonParser.parseString(dataJson).asJsonObject
-
-                val bookTitle = rootData["title"].asString
-                val bookAuthor = rootData["authors"].asJsonArray.joinToString {
-                    it.asJsonObject["name"].asString
-                }
-                val bookCover = rootData["image_file"]
-                    ?.takeIf { !it.isJsonNull }
-                    ?.asString
-                val bookDescription = rootData["description"]?.asString
-                val bookInfo = rootData["info"]?.asString
-
-                val pages = rootData["pages"].asJsonArray
-
-                pages.forEach {
-                    val page = it.asJsonObject
-                    bookPages + parseBookPage(page)
-                }
-
-                // Cleanup JSON file
-                dataJsonPath.delete()
-                return BookData(
-                    cover = Base64Image(bookCover),
-                    description = bookDescription,
-                    info = bookInfo,
-                    author = bookAuthor,
-                    title = bookTitle,
-                    pages = bookPages
-                )
-            } else {
-                throw RuntimeException("Failed to unzip book data.")
+            if (!dataJsonPath.exists()) {
+                throw IllegalStateException("Expected data file $dataJsonPath not found.")
             }
+
+            logger.info("Unzip successful. Streaming JSON data...")
+
+            // Local variables to hold data as we stream
+            var bookTitle = ""
+            var bookAuthor = ""
+            var bookCover: String? = null
+            var bookDescription: String? = null
+            var bookInfo: String? = null
+
+            // Use JsonReader for streaming to prevent OOM
+            JsonReader(FileReader(dataJsonPath)).use { reader ->
+                reader.beginObject()
+                while (reader.hasNext()) {
+                    when (reader.nextName()) {
+                        "title" -> bookTitle = reader.nextString()
+                        "description" -> bookDescription = reader.nextString()
+                        "info" -> bookInfo = reader.nextString()
+                        "image_file" -> bookCover = if (reader.peek() != JsonToken.NULL) reader.nextString() else { reader.nextNull(); null }
+                        "authors" -> {
+                            val authors = mutableListOf<String>()
+                            reader.beginArray()
+                            while (reader.hasNext()) {
+                                reader.beginObject()
+                                while (reader.hasNext()) {
+                                    if (reader.nextName() == "name") authors.add(reader.nextString())
+                                    else reader.skipValue()
+                                }
+                                reader.endObject()
+                            }
+                            reader.endArray()
+                            bookAuthor = authors.joinToString()
+                        }
+                        "pages" -> {
+                            reader.beginArray()
+                            while (reader.hasNext()) {
+                                // Using your existing parse logic but converting current object
+                                val pageElement = JsonParser.parseReader(reader).asJsonObject
+                                bookPages.add(parseBookPage(pageElement))
+                            }
+                            reader.endArray()
+                        }
+                        else -> reader.skipValue() // Ignore unknown fields
+                    }
+                }
+                reader.endObject()
+            }
+
+            dataJsonPath.delete()
+
+            return BookData(
+                cover = Base64Image(bookCover),
+                description = bookDescription,
+                info = bookInfo,
+                author = bookAuthor,
+                title = bookTitle,
+                pages = bookPages
+            )
 
         } catch (e: Exception) {
             logger.log(Level.SEVERE, "Failed to retrieve book data", e)
-            throw e // Re-throw to stop main process
+            throw e
         }
     }
 

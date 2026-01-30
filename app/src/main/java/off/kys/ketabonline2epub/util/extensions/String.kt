@@ -1,6 +1,7 @@
 package off.kys.ketabonline2epub.util.extensions
 
 import org.jsoup.Jsoup
+import java.io.File
 import java.net.URI
 import java.net.URLEncoder
 
@@ -37,3 +38,9 @@ fun String.escapeHtml(): String =
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace("\"", "&quot;")
+
+/**
+ * Converts a string to a File object.
+ * Useful for handling file paths or URLs.
+ */
+fun String.toFile() = File(this)
