@@ -69,7 +69,7 @@ fun BookSearchToolbar(
                     if (mainUiState.bookName.isNotEmpty()) {
                         IconButton(onClick = { onEvent(MainUiEvent.OnBookNameChange("")) }) {
                             Icon(
-                                painterResource(R.drawable.round_close_24),
+                                painter = painterResource(R.drawable.round_close_24),
                                 contentDescription = stringResource(R.string.clear)
                             )
                         }
@@ -94,7 +94,7 @@ fun BookSearchToolbar(
                     contentPadding = PaddingValues(horizontal = 20.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    if (mainUiState.isLoading) {
+                    if (mainUiState.isLoading && mainUiState.searchResults.isEmpty()) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp,

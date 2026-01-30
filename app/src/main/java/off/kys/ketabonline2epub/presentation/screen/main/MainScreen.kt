@@ -50,7 +50,7 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                 .fillMaxSize()
         ) {
             // Loading Indicator
-            if (state.isLoading) {
+            if (state.isLoading && state.searchResults.isNotEmpty()) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 

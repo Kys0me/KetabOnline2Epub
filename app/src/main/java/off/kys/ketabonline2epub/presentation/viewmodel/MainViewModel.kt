@@ -64,7 +64,13 @@ class MainViewModel(
         if (currentName.isBlank()) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    searchResults = emptyList()
+                )
+            }
             try {
                 // Fetch search results (hardcoded to page 1 for now)
                 val results = bookRepository.searchBooks(currentName, 1)
