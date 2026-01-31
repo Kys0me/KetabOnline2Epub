@@ -38,6 +38,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -62,6 +63,7 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.jsoup)
     implementation(libs.core.ktx)
+    implementation(files("libs/github-app-updater.aar"))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

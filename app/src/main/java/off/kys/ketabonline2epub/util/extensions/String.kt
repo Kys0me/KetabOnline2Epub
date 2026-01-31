@@ -44,3 +44,6 @@ fun String.escapeHtml(): String =
  * Useful for handling file paths or URLs.
  */
 fun String.toFile() = File(this)
+
+@Suppress("FunctionName", "NOTHING_TO_INLINE")
+inline fun String.Companion.Empty() = ""

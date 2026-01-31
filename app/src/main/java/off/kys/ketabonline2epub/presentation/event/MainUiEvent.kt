@@ -8,4 +8,6 @@ sealed class MainUiEvent {
     object OnSearchClicked : MainUiEvent()
     data class OnDownloadClicked(val book: BookItem) : MainUiEvent()
     object DownloadHandled : MainUiEvent() // To reset the download state after saving
+    object CheckForUpdates : MainUiEvent()
+    object OnDismissUpdateDialog : MainUiEvent()
 }

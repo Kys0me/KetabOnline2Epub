@@ -15,6 +15,7 @@ import off.kys.ketabonline2epub.common.file_saver.DocumentType
 import off.kys.ketabonline2epub.presentation.event.MainUiEvent
 import off.kys.ketabonline2epub.presentation.screen.main.components.BookSearchToolbar
 import off.kys.ketabonline2epub.presentation.screen.main.components.MainContent
+import off.kys.ketabonline2epub.presentation.screen.main.components.NewUpdateDialog
 import off.kys.ketabonline2epub.presentation.viewmodel.MainViewModel
 import off.kys.ketabonline2epub.util.save_file.rememberFileSaver
 import org.koin.androidx.compose.koinViewModel
@@ -58,5 +59,13 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                 onEvent = viewModel::onEvent
             )
         }
+    }
+
+    if (state.isUpdateAvailable) NewUpdateDialog(
+        versionName = state.newVersionName,
+        changelog = state.newVersionChangelog,
+        updateUrl = state.updateUrl,
+    ) {
+        viewModel.onEvent(MainUiEvent.OnDismissUpdateDialog)
     }
 }

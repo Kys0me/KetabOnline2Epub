@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import off.kys.github_app_updater.checkAppUpdate
+import off.kys.github_app_updater.common.ChangelogSource
+import off.kys.ketabonline2epub.BuildConfig
 import off.kys.ketabonline2epub.R
 import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.domain.repository.BookRepository
@@ -37,6 +40,10 @@ class MainViewModel(
     /** Public read-only state flow observed by the Compose UI. */
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
+    init {
+        onEvent(MainUiEvent.CheckForUpdates)
+    }
+
     /**
      * Unified entry point for UI interactions.
      * @param event The [MainUiEvent] representing user intent.
@@ -52,6 +59,35 @@ class MainViewModel(
 
             // Resets the downloaded file state after the UI has handled the file (e.g., showed the saver)
             MainUiEvent.DownloadHandled -> _uiState.update { it.copy(downloadedFile = null) }
+
+            MainUiEvent.CheckForUpdates -> checkForUpdates()
+            MainUiEvent.OnDismissUpdateDialog -> {
+                _uiState.update { it.copy(isUpdateAvailable = false) }
+            }
+        }
+    }
+
+    private fun checkForUpdates() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                checkAppUpdate {
+                    githubRepo("https://github.com/Kys0me/KetabOnline2Epub")
+                    currentVersion(BuildConfig.VERSION_NAME)
+                    changelogSource(ChangelogSource.RELEASE_BODY)
+                    onUpdateAvailable {result->
+                        _uiState.update {
+                            it.copy(
+                                isUpdateAvailable = true,
+                                newVersionName = result.latestVersion,
+                                newVersionChangelog = result.changeLog,
+                                updateUrl = result.downloadUrls.first().browserDownloadUrl
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Update check failed", e)
+            }
         }
     }
 
