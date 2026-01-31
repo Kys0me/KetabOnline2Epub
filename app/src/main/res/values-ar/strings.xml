@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KetabOnline2Epub</string>
     <string name="book_name">اسم الكتاب</string>
     <string name="download">تحميل</string>
     <string name="search">بحث</string>
@@ -11,4 +10,7 @@
     <string name="try_again">إعادة المحاولة</string>
     <string name="no_results_found">لم يتم العثور على نتائج</string>
     <string name="try_searching_for_a_book_title_or_author">حاول البحث عن عنوان كتاب أو مؤلف.</string>
+    <string name="update_now">تحديث الآن</string>
+    <string name="later">لاحقاً</string>
+    <string name="new_update_available_ver">يتوفر تحديث جديد: %1$s</string>
 </resources>
