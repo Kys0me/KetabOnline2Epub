@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +15,8 @@ import off.kys.github_app_updater.checkAppUpdate
 import off.kys.github_app_updater.common.ChangelogSource
 import off.kys.ketabonline2epub.BuildConfig
 import off.kys.ketabonline2epub.R
+import off.kys.ketabonline2epub.data.repository.BookDownloadTracker
+import off.kys.ketabonline2epub.domain.model.BookId
 import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.domain.repository.BookRepository
 import off.kys.ketabonline2epub.domain.repository.EpubConverterRepository
@@ -31,7 +34,8 @@ private const val TAG = "MainViewModel"
 class MainViewModel(
     private val application: Application,
     private val bookRepository: BookRepository,
-    private val epubConverterRepository: EpubConverterRepository
+    private val epubConverterRepository: EpubConverterRepository,
+    private val bookDownloadTracker: BookDownloadTracker
 ) : AndroidViewModel(application) {
 
     // Internal mutable state flow for UDF
@@ -64,8 +68,22 @@ class MainViewModel(
             MainUiEvent.OnDismissUpdateDialog -> {
                 _uiState.update { it.copy(isUpdateAvailable = false) }
             }
+            is MainUiEvent.MarkAsDownloaded -> {
+                bookDownloadTracker.setDownloaded(
+                    bookId = event.bookId.toString(),
+                    downloaded = true
+                )
+            }
         }
     }
+
+    /**
+     * Usage Pattern: Expose a flow for a specific book ID.
+     * The UI (Compose) can collect this as state.
+     */
+    fun isBookDownloaded(bookId: BookId): Flow<Boolean> =
+        bookDownloadTracker.isBookDownloadedFlow(bookId)
+
 
     private fun checkForUpdates() {
         viewModelScope.launch(Dispatchers.IO) {

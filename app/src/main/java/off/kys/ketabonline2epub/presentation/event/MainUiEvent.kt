@@ -1,5 +1,6 @@
 package off.kys.ketabonline2epub.presentation.event
 
+import off.kys.ketabonline2epub.domain.model.BookId
 import off.kys.ketabonline2epub.domain.model.BookItem
 
 // UI Events representing user actions
@@ -10,4 +11,5 @@ sealed class MainUiEvent {
     object DownloadHandled : MainUiEvent() // To reset the download state after saving
     object CheckForUpdates : MainUiEvent()
     object OnDismissUpdateDialog : MainUiEvent()
+    data class MarkAsDownloaded(val bookId: BookId) : MainUiEvent()
 }

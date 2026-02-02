@@ -12,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import off.kys.ketabonline2epub.common.file_saver.DocumentType
+import off.kys.ketabonline2epub.common.file_saver.FileSaveResult
 import off.kys.ketabonline2epub.presentation.event.MainUiEvent
 import off.kys.ketabonline2epub.presentation.screen.main.components.BookSearchToolbar
 import off.kys.ketabonline2epub.presentation.screen.main.components.MainContent
@@ -23,7 +24,12 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsState()
-    val saveBook = rememberFileSaver()
+    val saveBook = rememberFileSaver { result ->
+        when (result) {
+            FileSaveResult.Success -> viewModel.onEvent(MainUiEvent.MarkAsDownloaded(state.bookId))
+            else -> {}
+        }
+    }
     val isDownloading = state.isLoading && state.searchResults.isNotEmpty()
 
     // Handle File Saving Side Effect
@@ -54,10 +60,7 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
             // Loading Indicator
             if (isDownloading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 
-            MainContent(
-                state = state,
-                onEvent = viewModel::onEvent
-            )
+            MainContent(viewModel = viewModel)
         }
     }
 

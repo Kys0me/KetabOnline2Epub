@@ -14,4 +14,5 @@
     <string name="update_now">Update Now</string>
     <string name="later">Later</string>
     <string name="new_update_available_ver">New Update Available: %1$s</string>
+    <string name="downloaded">Downloaded</string>
 </resources>

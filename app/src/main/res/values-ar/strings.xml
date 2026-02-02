@@ -13,4 +13,5 @@
     <string name="update_now">تحديث الآن</string>
     <string name="later">لاحقاً</string>
     <string name="new_update_available_ver">يتوفر تحديث جديد: %1$s</string>
+    <string name="downloaded">تم تنزيله</string>
 </resources>
