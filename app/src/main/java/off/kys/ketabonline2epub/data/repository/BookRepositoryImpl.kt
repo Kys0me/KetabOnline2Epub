@@ -20,6 +20,7 @@ import off.kys.ketabonline2epub.util.extensions.encodeUrl
 import off.kys.ketabonline2epub.util.extensions.nextNullableString
 import off.kys.ketabonline2epub.util.extensions.readUrlAsText
 import off.kys.ketabonline2epub.util.extensions.safeArray
+import off.kys.ketabonline2epub.util.extensions.safeInt
 import off.kys.ketabonline2epub.util.extensions.safeString
 import off.kys.ketabonline2epub.util.extensions.toPlainText
 import off.kys.ketabonline2epub.util.readTextFromUrl
@@ -97,16 +98,19 @@ class BookRepositoryImpl(
                 bookIndices += BookIndex(
                     title = obj["title"].asString,
                     pageId = obj["page_id"].asInt,
-                    page = obj["page"].asInt,
+                    page = obj["page"]?.safeInt() ?: run {
+                        Log.e(TAG, "Invalid page: ${obj["page"]}")
+                        bookIndices.lastOrNull()?.page ?: 1
+                    },
                     part = obj["part_name"]?.safeString()?.toIntOrNull() ?: run {
-                        Log.w(TAG, "Invalid part name: ${obj["part_name"]}")
+                        Log.e(TAG, "Invalid part name: ${obj["part_name"]}")
                         1
                     }
                 )
                 Log.d(TAG, "Parsed index: ${bookIndices.last()}")
             }
         } catch (e: Exception) {
-            Log.e(TAG,  "Error fetching index", e)
+            Log.e(TAG, "Error fetching index", e)
         }
 
         return bookIndices
@@ -121,7 +125,8 @@ class BookRepositoryImpl(
             Log.d(TAG, "Downloading data from: $dataUrl")
             downloadFile(dataUrl, zipPath.absolutePath)
 
-            val dataJsonPath = unzip(zipPath) ?: throw RuntimeException("Failed to unzip book data.")
+            val dataJsonPath =
+                unzip(zipPath) ?: throw RuntimeException("Failed to unzip book data.")
 
             if (!dataJsonPath.exists()) {
                 throw IllegalStateException("Expected data file $dataJsonPath not found.")
@@ -141,7 +146,9 @@ class BookRepositoryImpl(
                 reader.beginObject()
                 while (reader.hasNext()) {
                     when (reader.nextName()) {
-                        "title" -> bookTitle = reader.nextNullableString() ?: throw IllegalStateException("This book has no title")
+                        "title" -> bookTitle = reader.nextNullableString()
+                            ?: throw IllegalStateException("This book has no title")
+
                         "description" -> bookDescription = reader.nextNullableString()
                         "info" -> bookInfo = reader.nextNullableString() // This fixes the crash
                         "image_file" -> bookCover = reader.nextNullableString()
@@ -162,6 +169,7 @@ class BookRepositoryImpl(
                             reader.endArray()
                             bookAuthor = authors.joinToString()
                         }
+
                         "pages" -> {
                             reader.beginArray()
                             while (reader.hasNext()) {
@@ -178,14 +186,18 @@ class BookRepositoryImpl(
 
             dataJsonPath.delete()
 
-            return BookData(
+            val bookData = BookData(
                 cover = Base64Image(bookCover),
                 description = bookDescription,
                 info = bookInfo,
                 author = bookAuthor,
                 title = bookTitle,
-                pages = bookPages
+                pages = bookPages,
             )
+
+            Log.d(TAG, "Book data parsed: $bookData")
+
+            return bookData
 
         } catch (e: Exception) {
             Log.d(TAG, "Failed to retrieve book data", e)

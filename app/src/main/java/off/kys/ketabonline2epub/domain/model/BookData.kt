@@ -6,5 +6,6 @@ data class BookData(
     val info: String?,
     val title: String,
     val pages: List<BookPage>,
-    val author: String
+    val author: String,
+    val pdfUrl: String? = null
 )
