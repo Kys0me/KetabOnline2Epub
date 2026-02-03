@@ -4,6 +4,8 @@ package off.kys.ketabonline2epub.util.extensions
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 
 /**
  * Safely extracts a String from a [JsonElement].
@@ -50,3 +52,21 @@ fun JsonElement?.safeArray(): JsonArray? =
         this.isJsonArray -> this.asJsonArray
         else -> null
     }
+
+/**
+ * Reads the next token from the JSON stream and asserts that it is a string value.
+ *
+ * This method is similar to `nextString()` but allows the value to be `null`.
+ * It consumes the next token and returns its string value. If the token is a JSON null,
+ * it consumes the null and returns a `null` string.
+ *
+ * @return The string value of the next token, or `null` if the token is a JSON null.
+ * @throws java.io.IOException if there is an I/O error during parsing.
+ * @throws com.google.gson.stream.MalformedJsonException if the next token is not a string or JSON null.
+ */
+fun JsonReader.nextNullableString(): String? = if (peek() == JsonToken.NULL) {
+    nextNull()
+    null
+} else {
+    nextString()
+}

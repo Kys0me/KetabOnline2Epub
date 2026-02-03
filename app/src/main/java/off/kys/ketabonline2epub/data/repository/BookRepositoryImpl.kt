@@ -5,7 +5,6 @@ import android.util.Log
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.stream.JsonReader
-import com.google.gson.stream.JsonToken
 import off.kys.ketabonline2epub.common.Constants
 import off.kys.ketabonline2epub.domain.model.Base64Image
 import off.kys.ketabonline2epub.domain.model.BookData
@@ -15,8 +14,10 @@ import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.domain.model.BookPage
 import off.kys.ketabonline2epub.domain.repository.BookRepository
 import off.kys.ketabonline2epub.util.downloadFile
+import off.kys.ketabonline2epub.util.extensions.Empty
 import off.kys.ketabonline2epub.util.extensions.cacheDir
 import off.kys.ketabonline2epub.util.extensions.encodeUrl
+import off.kys.ketabonline2epub.util.extensions.nextNullableString
 import off.kys.ketabonline2epub.util.extensions.readUrlAsText
 import off.kys.ketabonline2epub.util.extensions.safeArray
 import off.kys.ketabonline2epub.util.extensions.safeString
@@ -140,18 +141,21 @@ class BookRepositoryImpl(
                 reader.beginObject()
                 while (reader.hasNext()) {
                     when (reader.nextName()) {
-                        "title" -> bookTitle = reader.nextString()
-                        "description" -> bookDescription = reader.nextString()
-                        "info" -> bookInfo = reader.nextString()
-                        "image_file" -> bookCover = if (reader.peek() != JsonToken.NULL) reader.nextString() else { reader.nextNull(); null }
+                        "title" -> bookTitle = reader.nextNullableString() ?: throw IllegalStateException("This book has no title")
+                        "description" -> bookDescription = reader.nextNullableString()
+                        "info" -> bookInfo = reader.nextNullableString() // This fixes the crash
+                        "image_file" -> bookCover = reader.nextNullableString()
                         "authors" -> {
                             val authors = mutableListOf<String>()
                             reader.beginArray()
                             while (reader.hasNext()) {
                                 reader.beginObject()
                                 while (reader.hasNext()) {
-                                    if (reader.nextName() == "name") authors.add(reader.nextString())
-                                    else reader.skipValue()
+                                    if (reader.nextName() == "name") {
+                                        authors.add(reader.nextNullableString() ?: String.Empty())
+                                    } else {
+                                        reader.skipValue()
+                                    }
                                 }
                                 reader.endObject()
                             }
@@ -161,13 +165,12 @@ class BookRepositoryImpl(
                         "pages" -> {
                             reader.beginArray()
                             while (reader.hasNext()) {
-                                // Using your existing parse logic but converting current object
                                 val pageElement = JsonParser.parseReader(reader).asJsonObject
                                 bookPages.add(parseBookPage(pageElement))
                             }
                             reader.endArray()
                         }
-                        else -> reader.skipValue() // Ignore unknown fields
+                        else -> reader.skipValue()
                     }
                 }
                 reader.endObject()
