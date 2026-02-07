@@ -6,6 +6,7 @@ import nl.siegmann.epublib.domain.Resource
 import nl.siegmann.epublib.service.MediatypeService
 import off.kys.ketabonline2epub.util.epub_builder.dsl.EpubDsl
 import off.kys.ketabonline2epub.util.extensions.escapeHtml
+import off.kys.ketabonline2epub.util.extensions.normalize
 import java.nio.charset.StandardCharsets
 
 /**
@@ -21,48 +22,69 @@ class ChapterBuilder(
     private val body = StringBuilder()
 
     /**
-     * Appends raw text or HTML to the chapter body using the '+' operator.
+     * Process text: Escape HTML special characters, then convert newlines to <br/>.
+     */
+    private fun String.prepare(): String = this.escapeHtml().normalize()
+
+    /**
+     * Appends text to the chapter body. Automatically handles escaping and newlines.
      */
     operator fun String.unaryPlus() {
-        body.append(this)
+        body.append(this.prepare())
     }
 
-    /** Appends a line break tag. */
-    fun br() {
-        body.append("<br>")
-    }
-
-    /** Wraps the given [text] in a paragraph tag, escaping HTML entities. */
-    fun p(text: String) {
-        body.append("<p>").append(text.escapeHtml()).append("</p>")
-    }
-
-    /** * Higher-order function to build a paragraph block using a nested DSL.
+    /**
+     * Appends a line break tag.
      */
-    fun p(text: StringBuilder.() -> Unit) {
-        body.append("<p>")
+    fun br() {
+        body.append("<br/>")
+    }
+
+    /**
+     * Wraps the text in a paragraph tag with normalized line breaks.
+     */
+    fun p(text: String) {
+        body.append("<p>").append(text.prepare()).append("</p>")
+    }
+
+    /**
+     * Higher-order function to build a paragraph block using a nested DSL.
+     */
+    fun p(block: StringBuilder.() -> Unit) {
         val sb = StringBuilder()
-        sb.text()
-        body.append(sb)
-        body.append("</p>")
+        sb.block()
+        // We normalize the result of the block
+        body.append("<p>").append(sb.toString().normalize()).append("</p>")
     }
 
-    /** Wraps [text] in an H1 tag. */
+    /**
+     * Wraps [text] in an H1 tag.
+     */
     fun h1(text: String) {
-        body.append("<h1>").append(text.escapeHtml()).append("</h1>")
+        body.append("<h1>").append(text.prepare()).append("</h1>")
     }
 
-    /** Wraps [text] in an H2 tag. */
+    /**
+     * Wraps [text] in an H2 tag.
+     */
     fun h2(text: String) {
-        body.append("<h2>").append(text.escapeHtml()).append("</h2>")
+        body.append("<h2>").append(text.prepare()).append("</h2>")
     }
 
-    /** Inserts an image tag with source and optional alt text. */
+    /**
+     * Inserts an image tag. Note: src and alt are escaped but not normalized (newlines in URLs are invalid).
+     */
     fun img(src: String, alt: String = "") {
-        body.append("<img src=\"").append(src.escapeHtml()).append("\" alt=\"").append(alt.escapeHtml()).append("\"/>")
+        body.append("<img src=\"")
+            .append(src.escapeHtml())
+            .append("\" alt=\"")
+            .append(alt.escapeHtml())
+            .append("\"/>")
     }
 
-    /** Appends raw HTML string directly. Use with caution to avoid malformed XHTML. */
+    /**
+     * Appends raw HTML string directly. Use with caution!
+     */
     fun raw(html: String) {
         body.append(html)
     }

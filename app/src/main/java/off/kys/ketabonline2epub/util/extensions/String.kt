@@ -1,6 +1,10 @@
 package off.kys.ketabonline2epub.util.extensions
 
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Node
+import org.jsoup.nodes.TextNode
+import org.jsoup.select.NodeTraversor
+import org.jsoup.select.NodeVisitor
 import java.io.File
 import java.net.URI
 import java.net.URLEncoder
@@ -18,16 +22,54 @@ fun String.encodeUrl(): String = URLEncoder.encode(this, "UTF-8")
 fun String.readUrlAsText(): String = URI(this).toURL().readText()
 
 /**
- * Normalizes line endings for HTML rendering.
- * Replaces newlines with `<br/>` tags and removes carriage returns.
+ * Normalizes text for XHTML rendering by replacing various newline formats
+ * with `<br/>` tags and removing standalone carriage returns.
  */
-fun String.normalize(): String = this.replace("\n", "<br/>").replace("\r", "")
+fun String.normalize(): String = this
+    .replace("\r\n", "<br/>") // Handle Windows line endings
+    .replace("\n", "<br/>")   // Handle Unix line endings
+    .replace("\r", "")        // Clean up remaining carriage returns
 
 /**
- * Strips all HTML tags from a string and returns the raw text content.
- * Powered by Jsoup for robust parsing.
+ * Converts an HTML string to plain text, preserving basic structural spacing
+ * while enforcing a maximum limit on consecutive newlines.
+ *
+ * @param maxNewLines The maximum number of consecutive empty lines allowed between blocks.
+ * Defaults to 2 (standard paragraph spacing).
+ * @return A trimmed plain-text representation of the HTML.
  */
-fun String.toPlainText(): String = Jsoup.parse(this).text()
+fun String.toPlainText(maxNewLines: Int = 2): String {
+    val document = Jsoup.parse(this)
+    val sb = StringBuilder()
+
+    // Helper to append newlines without exceeding the limit
+    fun appendNewLines(count: Int) {
+        val currentEndingNewLines = sb.reversed().takeWhile { it == '\n' }.length
+        val remainingToFill = count - currentEndingNewLines
+        repeat(remainingToFill.coerceAtLeast(0)) { sb.append("\n") }
+    }
+
+    NodeTraversor.traverse(object : NodeVisitor {
+        override fun head(node: Node, depth: Int) {
+            when {
+                node is TextNode -> sb.append(node.text())
+                node.nodeName() == "br" -> appendNewLines(1)
+                node.nodeName() in listOf("p", "div", "h1", "h2", "h3", "li") && sb.isNotEmpty() -> {
+                    appendNewLines(1)
+                }
+            }
+        }
+
+        override fun tail(node: Node, depth: Int) {
+            if (node.nodeName() in listOf("p", "div", "h1", "h2", "h3", "li")) {
+                // Ensure block elements are followed by the desired spacing
+                appendNewLines(maxNewLines)
+            }
+        }
+    }, document.body())
+
+    return sb.toString().trim()
+}
 
 /**
  * Replaces special characters with their corresponding HTML entities.

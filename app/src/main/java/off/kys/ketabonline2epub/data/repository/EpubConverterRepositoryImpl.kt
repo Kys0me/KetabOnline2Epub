@@ -10,7 +10,6 @@ import off.kys.ketabonline2epub.domain.repository.EpubConverterRepository
 import off.kys.ketabonline2epub.util.epub_builder.dsl.epub
 import off.kys.ketabonline2epub.util.epub_builder.dsl.writeTo
 import off.kys.ketabonline2epub.util.extensions.cacheDir
-import off.kys.ketabonline2epub.util.extensions.normalize
 import java.io.File
 
 private const val TAG = "EpubConverterRepository"
@@ -48,12 +47,12 @@ class EpubConverterRepositoryImpl(
                         append("<br/>")
                         if (bookData.description != null) {
                             append("وصف الكتاب: ")
-                            append(bookData.description.normalize())
+                            append(bookData.description)
                             append("<br/>")
                         }
                         if (bookData.info != null) {
                             append("حول الكتاب: ")
-                            append(bookData.info.normalize())
+                            append(bookData.info)
                             append("<br/>")
                         }
                     }
@@ -71,7 +70,7 @@ class EpubConverterRepositoryImpl(
                     chapter(title = ch.title) {
                         ch.pages.forEach { page ->
                             p {
-                                append(page.content.normalize())
+                                append(page.content)
                                 append(" [م ")
                                 append(page.part)
                                 append(" ص ")
