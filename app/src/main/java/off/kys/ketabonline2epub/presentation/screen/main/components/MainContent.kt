@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import off.kys.ketabonline2epub.presentation.event.MainUiEvent
+import off.kys.ketabonline2epub.presentation.utils.rememberDownloadedBooks
 import off.kys.ketabonline2epub.presentation.viewmodel.MainViewModel
 
 @Composable
@@ -38,11 +39,11 @@ fun MainContent(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
                 items(items = state.searchResults, key = { it.id.value }) { book ->
-                    val bookDownloaded by viewModel.isBookDownloaded(book.id).collectAsState(initial = false)
+                    val downloadTracker by rememberDownloadedBooks()
 
                     BookListItem(
                         book = book,
-                        isDownloaded = bookDownloaded,
+                        isDownloaded = downloadTracker.containsKey(book.id.toString()),
                         enabled = isDownloading.not()
                     ) {
                         viewModel.onEvent(MainUiEvent.OnDownloadClicked(book))

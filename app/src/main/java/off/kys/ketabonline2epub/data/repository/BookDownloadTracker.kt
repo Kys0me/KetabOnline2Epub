@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package off.kys.ketabonline2epub.data.repository
 
 import android.content.Context
@@ -6,42 +8,50 @@ import androidx.core.content.edit
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import off.kys.ketabonline2epub.common.BookType
 import off.kys.ketabonline2epub.domain.model.BookId
 
 class BookDownloadTracker(context: Context) {
-    private val prefs: SharedPreferences = 
-        context.getSharedPreferences("book_prefs", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("book_downloads_prefs", Context.MODE_PRIVATE)
 
     /**
-     * Observes the download status of a specific book.
-     * Uses callbackFlow to turn the Listener into a Stream of data.
+     * Stores a book. Key is the ID, Value is the type.
      */
-    fun isBookDownloadedFlow(bookId: BookId): Flow<Boolean> = callbackFlow {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
-            if (key == bookId.toString()) {
-                trySend(sharedPrefs.getBoolean(bookId.toString(), false))
-            }
-        }
-
-        prefs.registerOnSharedPreferenceChangeListener(listener)
-        
-        // Emit the current value immediately when starting
-        trySend(prefs.getBoolean(bookId.toString(), false))
-
-        // Clean up the listener when the flow is closed (e.g., Composable leaves composition)
-        awaitClose {
-            prefs.unregisterOnSharedPreferenceChangeListener(listener)
-        }
+    fun saveBook(bookId: BookId, type: BookType) {
+        prefs.edit { putString(bookId.toString(), type.name) }
     }
 
     /**
-     * Sets the download status of a book.
-     * Uses SharedPreferences to store the download status.
-     *
-     * @param bookId The ID of the book.
-     * @param downloaded Whether the book has been downloaded.
+     * Removes a book. Key is the ID.
      */
-    fun setDownloaded(bookId: String, downloaded: Boolean) {
-        prefs.edit { putBoolean(bookId, downloaded) }
+    fun removeBook(bookId: BookId) {
+        prefs.edit { remove(bookId.toString()) }
+    }
+
+    fun getBookType(bookId: BookId): BookType {
+        val typeString = prefs.getString(bookId.toString(), null) ?: throw IllegalStateException("Book not found")
+        return BookType.valueOf(typeString)
+    }
+
+    fun isDownloaded(bookId: BookId): Boolean = prefs.contains(bookId.toString())
+
+    /**
+     * A Flow that emits a Map of all downloaded Book IDs and their types.
+     * Updates automatically whenever SharedPreferences changes.
+     */
+    fun observeAllDownloads(): Flow<Map<String, BookType>> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, _ ->
+            val allEntries = p.all.mapValues { BookType.valueOf(it.value as String) }
+            trySend(allEntries)
+        }
+
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+
+        // Initial value
+        val initialValue = prefs.all.mapValues { BookType.valueOf(it.value as String) }
+        trySend(initialValue)
+
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 }
