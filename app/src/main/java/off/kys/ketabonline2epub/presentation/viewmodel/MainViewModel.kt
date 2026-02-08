@@ -15,6 +15,7 @@ import off.kys.github_app_updater.common.ChangelogSource
 import off.kys.ketabonline2epub.BuildConfig
 import off.kys.ketabonline2epub.R
 import off.kys.ketabonline2epub.common.BookType
+import off.kys.ketabonline2epub.common.Constants
 import off.kys.ketabonline2epub.data.repository.BookDownloadTracker
 import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.domain.repository.BookRepository
@@ -74,6 +75,7 @@ class MainViewModel(
             MainUiEvent.OnDismissUpdateDialog -> {
                 _uiState.update { it.copy(isUpdateAvailable = false) }
             }
+
             is MainUiEvent.MarkAsDownloaded -> {
                 bookDownloadTracker.saveBook(
                     bookId = event.bookId,
@@ -88,10 +90,10 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 checkAppUpdate {
-                    githubRepo("https://github.com/Kys0me/KetabOnline2Epub")
+                    githubRepo(Constants.PROJECT_REPOSITORY_URL)
                     currentVersion(BuildConfig.VERSION_NAME)
                     changelogSource(ChangelogSource.RELEASE_BODY)
-                    onUpdateAvailable {result->
+                    onUpdateAvailable { result ->
                         _uiState.update {
                             it.copy(
                                 isUpdateAvailable = true,
