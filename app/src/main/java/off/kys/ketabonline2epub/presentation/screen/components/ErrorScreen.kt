@@ -1,4 +1,4 @@
-package off.kys.ketabonline2epub.presentation.screen.main.components
+package off.kys.ketabonline2epub.presentation.screen.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

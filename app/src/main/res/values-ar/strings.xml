@@ -1,17 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <resources>
+    <string name="app_name" translatable="false">KetabOnline2Epub</string>
     <string name="book_name">اسم الكتاب</string>
     <string name="download">تحميل</string>
     <string name="search">بحث</string>
     <string name="book_cover">غلاف الكتاب</string>
     <string name="default_untitled">بلا عنوان</string>
-    <string name="search_books">بحث عن كتب…</string>
+    <string name="search_books">ابحث عن كتب…</string>
     <string name="clear">مسح</string>
     <string name="try_again">إعادة المحاولة</string>
     <string name="no_results_found">لم يتم العثور على نتائج</string>
-    <string name="try_searching_for_a_book_title_or_author">حاول البحث عن عنوان كتاب أو مؤلف.</string>
+    <string name="try_searching_for_another_book_title_or_author">حاول البحث عن عنوان كتاب آخر أو اسم مؤلف.</string>
     <string name="update_now">تحديث الآن</string>
     <string name="later">لاحقاً</string>
     <string name="new_update_available_ver">يتوفر تحديث جديد: %1$s</string>
-    <string name="downloaded">تم تنزيله</string>
+    <string name="downloaded">تم التحميل</string>
+    <string name="loading_please_wait">جاري التحميل، يرجى الانتظار…</string>
+    <string name="search_by_book_title_author_name_to_get_started">ابدأ بالبحث عن طريق عنوان الكتاب أو اسم المؤلف.</string>
+    <string name="searching_for_books">جاري البحث عن كتب…</string>
+    <string name="you_ve_reached_the_end_of_the_results">نهاية نتائج البحث</string>
 </resources>

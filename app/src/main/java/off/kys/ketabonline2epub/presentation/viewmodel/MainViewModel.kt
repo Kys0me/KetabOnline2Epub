@@ -54,7 +54,14 @@ class MainViewModel(
     fun onEvent(event: MainUiEvent) {
         when (event) {
             is MainUiEvent.OnBookNameChange -> {
-                _uiState.update { it.copy(bookName = event.name) }
+                _uiState.update {
+                    it.copy(
+                        searchQuery = event.name,
+                        // If user clears the text, reset hasSearched so we show the Placeholder again
+                        hasSearched = if (event.name.isBlank()) false else it.hasSearched,
+                        searchResults = if (event.name.isBlank()) emptyList() else it.searchResults
+                    )
+                }
             }
 
             MainUiEvent.OnSearchClicked -> searchBooks()
@@ -106,8 +113,7 @@ class MainViewModel(
      * Performs a network call on the IO dispatcher.
      */
     private fun searchBooks() {
-        val currentName = _uiState.value.bookName
-
+        val currentName = _uiState.value.searchQuery
         if (currentName.isBlank()) return
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -115,19 +121,26 @@ class MainViewModel(
                 it.copy(
                     isLoading = true,
                     errorMessage = null,
-                    searchResults = emptyList()
+                    searchResults = emptyList(),
+                    hasSearched = false // Reset this while a NEW search is in progress
                 )
             }
             try {
-                // Fetch search results (hardcoded to page 1 for now)
                 val results = bookRepository.searchBooks(currentName, 1)
-                _uiState.update { it.copy(searchResults = results, isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        searchResults = results,
+                        isLoading = false,
+                        hasSearched = true // Set to true only after results (or empty list) come back
+                    )
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Search failed", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Search failed: ${e.localizedMessage}"
+                        errorMessage = "Search failed: ${e.localizedMessage}",
+                        hasSearched = true // Set to true even on error to stop the loading state
                     )
                 }
             }

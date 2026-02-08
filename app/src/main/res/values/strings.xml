@@ -10,9 +10,13 @@
     <string name="clear">Clear</string>
     <string name="try_again">Try Again</string>
     <string name="no_results_found">No results found</string>
-    <string name="try_searching_for_a_book_title_or_author">Try searching for a book title or author.</string>
+    <string name="try_searching_for_another_book_title_or_author">Try searching for another book title or author.</string>
     <string name="update_now">Update Now</string>
     <string name="later">Later</string>
     <string name="new_update_available_ver">New Update Available: %1$s</string>
     <string name="downloaded">Downloaded</string>
+    <string name="loading_please_wait">Loading, please wait…</string>
+    <string name="search_by_book_title_author_name_to_get_started">Search by book title, author name to get started.</string>
+    <string name="searching_for_books">Searching for books…</string>
+    <string name="you_ve_reached_the_end_of_the_results">You\'ve reached the end of the results</string>
 </resources>

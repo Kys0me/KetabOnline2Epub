@@ -56,7 +56,7 @@ fun BookSearchToolbar(
                     .weight(1f)
                     .statusBarsPadding()
                     .clip(CircleShape), // Rounded pill shape
-                value = mainUiState.bookName,
+                value = mainUiState.searchQuery,
                 onValueChange = { onEvent(MainUiEvent.OnBookNameChange(it)) },
                 placeholder = { Text(stringResource(R.string.search_books)) },
                 leadingIcon = {
@@ -66,7 +66,7 @@ fun BookSearchToolbar(
                     )
                 },
                 trailingIcon = {
-                    if (mainUiState.bookName.isNotEmpty()) {
+                    if (mainUiState.searchQuery.isNotEmpty()) {
                         IconButton(onClick = { onEvent(MainUiEvent.OnBookNameChange("")) }) {
                             Icon(
                                 painter = painterResource(R.drawable.round_close_24),
