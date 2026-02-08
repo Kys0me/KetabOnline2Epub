@@ -9,11 +9,12 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import off.kys.ketabonline2epub.common.BookType
+import off.kys.ketabonline2epub.common.Constants
 import off.kys.ketabonline2epub.domain.model.BookId
 
 class BookDownloadTracker(context: Context) {
     private val prefs: SharedPreferences =
-        context.getSharedPreferences("book_downloads_prefs", Context.MODE_PRIVATE)
+        context.getSharedPreferences(Constants.BOOK_DOWNLOAD_TRACKER_PREFS, Context.MODE_PRIVATE)
 
     /**
      * Stores a book. Key is the ID, Value is the type.
