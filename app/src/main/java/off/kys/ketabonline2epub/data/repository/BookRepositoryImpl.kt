@@ -5,6 +5,8 @@ import android.util.Log
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.stream.JsonReader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import off.kys.ketabonline2epub.common.Constants
 import off.kys.ketabonline2epub.domain.model.Base64Image
 import off.kys.ketabonline2epub.domain.model.BookData
@@ -142,46 +144,51 @@ class BookRepositoryImpl(
             var bookInfo: String? = null
 
             // Use JsonReader for streaming to prevent OOM
-            JsonReader(FileReader(dataJsonPath)).use { reader ->
-                reader.beginObject()
-                while (reader.hasNext()) {
-                    when (reader.nextName()) {
-                        "title" -> bookTitle = reader.nextNullableString()
-                            ?: throw IllegalStateException("This book has no title")
+            withContext(Dispatchers.IO) {
+                JsonReader(FileReader(dataJsonPath)).use { reader ->
+                    reader.beginObject()
+                    while (reader.hasNext()) {
+                        when (reader.nextName()) {
+                            "title" -> bookTitle = reader.nextNullableString()
+                                ?: throw IllegalStateException("This book has no title")
 
-                        "description" -> bookDescription = reader.nextNullableString()
-                        "info" -> bookInfo = reader.nextNullableString() // This fixes the crash
-                        "image_file" -> bookCover = reader.nextNullableString()
-                        "authors" -> {
-                            val authors = mutableListOf<String>()
-                            reader.beginArray()
-                            while (reader.hasNext()) {
-                                reader.beginObject()
+                            "description" -> bookDescription = reader.nextNullableString()
+                            "info" -> bookInfo = reader.nextNullableString() // This fixes the crash
+                            "image_file" -> bookCover = reader.nextNullableString()
+                            "authors" -> {
+                                val authors = mutableListOf<String>()
+                                reader.beginArray()
                                 while (reader.hasNext()) {
-                                    if (reader.nextName() == "name") {
-                                        authors.add(reader.nextNullableString() ?: String.Empty())
-                                    } else {
-                                        reader.skipValue()
+                                    reader.beginObject()
+                                    while (reader.hasNext()) {
+                                        if (reader.nextName() == "name") {
+                                            authors.add(
+                                                reader.nextNullableString() ?: String.Empty()
+                                            )
+                                        } else {
+                                            reader.skipValue()
+                                        }
                                     }
+                                    reader.endObject()
                                 }
-                                reader.endObject()
+                                reader.endArray()
+                                bookAuthor = authors.joinToString()
                             }
-                            reader.endArray()
-                            bookAuthor = authors.joinToString()
-                        }
 
-                        "pages" -> {
-                            reader.beginArray()
-                            while (reader.hasNext()) {
-                                val pageElement = JsonParser.parseReader(reader).asJsonObject
-                                bookPages.add(parseBookPage(pageElement))
+                            "pages" -> {
+                                reader.beginArray()
+                                while (reader.hasNext()) {
+                                    val pageElement = JsonParser.parseReader(reader).asJsonObject
+                                    bookPages.add(parseBookPage(pageElement))
+                                }
+                                reader.endArray()
                             }
-                            reader.endArray()
+
+                            else -> reader.skipValue()
                         }
-                        else -> reader.skipValue()
                     }
+                    reader.endObject()
                 }
-                reader.endObject()
             }
 
             dataJsonPath.delete()
