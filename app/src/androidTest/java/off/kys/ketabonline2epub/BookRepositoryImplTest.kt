@@ -11,6 +11,7 @@ import org.junit.Test
 class BookRepositoryImplTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val bookId = BookId(6157)
 
     @Test
     fun testSearchBooks() = runBlocking {
@@ -24,7 +25,6 @@ class BookRepositoryImplTest {
     fun testBookDownloading() = runBlocking {
         val bookRepository = BookRepositoryImpl(context)
         val epubConverterRepository = EpubConverterRepositoryImpl(context)
-        val bookId = BookId(1545)
 
         // Step 1 & 2: Data Acquisition
         val bookIndex = bookRepository.getBookIndex(bookId)
@@ -44,6 +44,13 @@ class BookRepositoryImplTest {
                 The downloaded file is likely incomplete
             """.trimIndent()
         }
+    }
+
+    @Test
+    fun testGettingPdf() = runBlocking {
+        val bookRepository = BookRepositoryImpl(context)
+
+        assert(bookRepository.getBookData(bookId).pdfUrl != null)
     }
 
 }

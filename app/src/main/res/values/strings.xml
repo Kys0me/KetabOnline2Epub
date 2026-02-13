@@ -19,4 +19,5 @@
     <string name="search_by_book_title_author_name_to_get_started">Search by book title, author name to get started.</string>
     <string name="searching_for_books">Searching for books…</string>
     <string name="you_ve_reached_the_end_of_the_results">You\'ve reached the end of the results</string>
+    <string name="unknown_author" translatable="false">مجهول</string>
 </resources>

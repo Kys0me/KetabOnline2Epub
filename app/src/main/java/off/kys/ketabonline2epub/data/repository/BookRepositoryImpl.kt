@@ -5,8 +5,10 @@ import android.util.Log
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import off.kys.ketabonline2epub.R
 import off.kys.ketabonline2epub.common.Constants
 import off.kys.ketabonline2epub.domain.model.Base64Image
 import off.kys.ketabonline2epub.domain.model.BookData
@@ -16,7 +18,6 @@ import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.domain.model.BookPage
 import off.kys.ketabonline2epub.domain.repository.BookRepository
 import off.kys.ketabonline2epub.util.downloadFile
-import off.kys.ketabonline2epub.util.extensions.Empty
 import off.kys.ketabonline2epub.util.extensions.cacheDir
 import off.kys.ketabonline2epub.util.extensions.encodeUrl
 import off.kys.ketabonline2epub.util.extensions.nextNullableString
@@ -139,6 +140,7 @@ class BookRepositoryImpl(
             // Local variables to hold data as we stream
             var bookTitle = ""
             var bookAuthor = ""
+            var pdfUrl: String? = null
             var bookCover: String? = null
             var bookDescription: String? = null
             var bookInfo: String? = null
@@ -162,9 +164,7 @@ class BookRepositoryImpl(
                                     reader.beginObject()
                                     while (reader.hasNext()) {
                                         if (reader.nextName() == "name") {
-                                            authors.add(
-                                                reader.nextNullableString() ?: String.Empty()
-                                            )
+                                            authors += reader.nextNullableString() ?: context.getString(R.string.unknown_author)
                                         } else {
                                             reader.skipValue()
                                         }
@@ -184,6 +184,31 @@ class BookRepositoryImpl(
                                 reader.endArray()
                             }
 
+                            "files" -> {
+                                reader.beginObject()
+                                while (reader.hasNext()) {
+                                    if (reader.nextName() == "pdf") {
+                                        // Check if the value is NULL before proceeding
+                                        if (reader.peek() == JsonToken.NULL) {
+                                            reader.nextNull() // Consume the null value
+                                        } else {
+                                            reader.beginObject()
+                                            while (reader.hasNext()) {
+                                                if (reader.nextName() == "url") {
+                                                    pdfUrl = reader.nextNullableString()
+                                                } else {
+                                                    reader.skipValue()
+                                                }
+                                            }
+                                            reader.endObject()
+                                        }
+                                    } else {
+                                        reader.skipValue()
+                                    }
+                                }
+                                reader.endObject()
+                            }
+
                             else -> reader.skipValue()
                         }
                     }
@@ -200,6 +225,7 @@ class BookRepositoryImpl(
                 author = bookAuthor,
                 title = bookTitle,
                 pages = bookPages,
+                pdfUrl = pdfUrl
             )
 
             Log.d(TAG, "Book data parsed: $bookData")
