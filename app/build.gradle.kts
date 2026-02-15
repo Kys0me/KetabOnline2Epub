@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.moshi.kotlin)
     implementation(libs.converter.moshi)
     implementation(files("libs/github-app-updater.aar"))
+    implementation(libs.pdfbox.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

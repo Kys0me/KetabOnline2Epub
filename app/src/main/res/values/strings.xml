@@ -20,4 +20,6 @@
     <string name="searching_for_books">Searching for books…</string>
     <string name="you_ve_reached_the_end_of_the_results">You\'ve reached the end of the results</string>
     <string name="unknown_author" translatable="false">مجهول</string>
+    <string name="pdf" translatable="false">PDF</string>
+    <string name="epub" translatable="false">EPUB</string>
 </resources>

@@ -6,7 +6,7 @@ import org.jsoup.nodes.TextNode
 import org.jsoup.select.NodeTraversor
 import org.jsoup.select.NodeVisitor
 import java.io.File
-import java.net.URI
+import java.net.URL
 import java.net.URLEncoder
 
 /**
@@ -16,10 +16,14 @@ import java.net.URLEncoder
 fun String.encodeUrl(): String = URLEncoder.encode(this, "UTF-8")
 
 /**
- * Fetches the content from the given URL string and returns it as a plain string.
- * Note: This performs a blocking network operation.
+ * Converts a string to a URL object.
+ * Useful for handling URLs or file paths.
+ *
+ * @throws IllegalArgumentException if the string is not a valid URL.
+ * @return A URL object representing the given string.
+ * @see URL
  */
-fun String.readUrlAsText(): String = URI(this).toURL().readText()
+fun String.toURL(): URL = URL(this)
 
 /**
  * Normalizes text for XHTML rendering by replacing various newline formats

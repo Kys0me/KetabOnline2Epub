@@ -19,7 +19,7 @@ import off.kys.ketabonline2epub.common.file_saver.FileSaveResult
  * It manages the lifecycle of the [androidx.activity.result.ActivityResultLauncher] and maintains
  * the byte data temporarily while the user selects a destination.
  *
- * @param onResult Callback invoked when the save operation completes, is cancelled, or fails.
+ * @param onResult Callback invoked when the save operation completes, is canceled, or fails.
  * @return An implementation of [ComposeFileSaver] to trigger the save dialog.
  */
 @Suppress("AssignedValueIsNeverRead")

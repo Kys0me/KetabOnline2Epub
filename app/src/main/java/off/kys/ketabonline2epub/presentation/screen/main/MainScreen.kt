@@ -1,5 +1,6 @@
 package off.kys.ketabonline2epub.presentation.screen.main
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import off.kys.ketabonline2epub.common.BookType
 import off.kys.ketabonline2epub.common.file_saver.DocumentType
 import off.kys.ketabonline2epub.common.file_saver.FileSaveResult
 import off.kys.ketabonline2epub.presentation.event.MainUiEvent
@@ -21,13 +23,22 @@ import off.kys.ketabonline2epub.presentation.viewmodel.MainViewModel
 import off.kys.ketabonline2epub.util.save_file.rememberFileSaver
 import org.koin.androidx.compose.koinViewModel
 
+private const val TAG = "MainScreen"
+
 @Composable
 fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val saveBook = rememberFileSaver { result ->
         when (result) {
-            FileSaveResult.Success -> viewModel.onEvent(MainUiEvent.MarkAsDownloaded(state.bookId))
-            else -> {}
+            FileSaveResult.Success -> {
+                val extension = state.downloadedFile!!.extension
+                when(extension.lowercase()) {
+                    "pdf" -> viewModel.onEvent(MainUiEvent.MarkAsDownloaded(BookType.PDF(state.bookId)))
+                    "epub" -> viewModel.onEvent(MainUiEvent.MarkAsDownloaded(BookType.PDF(state.bookId)))
+                    else -> Log.w(TAG, "MainScreen: Unknown file extension")
+                }
+            }
+            else -> Log.w(TAG, "MainScreen: File saving failed")
         }
     }
     val isDownloading = state.isLoading && state.searchResults.isNotEmpty()
@@ -36,7 +47,7 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
     LaunchedEffect(key1 = state.downloadedFile) {
         state.downloadedFile?.let { file ->
             saveBook.save(
-                fileName = "${state.bookId.value} - ${file.name}",
+                fileName = "${state.bookId.value} - ${file.name}".removePrefix("-").trim(),
                 type = DocumentType.EPUB,
                 data = file.readBytes()
             )

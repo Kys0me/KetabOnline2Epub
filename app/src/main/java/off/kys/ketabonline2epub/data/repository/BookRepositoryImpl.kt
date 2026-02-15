@@ -2,8 +2,6 @@ package off.kys.ketabonline2epub.data.repository
 
 import android.content.Context
 import android.util.Log
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import kotlinx.coroutines.Dispatchers
@@ -21,115 +19,125 @@ import off.kys.ketabonline2epub.util.downloadFile
 import off.kys.ketabonline2epub.util.extensions.cacheDir
 import off.kys.ketabonline2epub.util.extensions.encodeUrl
 import off.kys.ketabonline2epub.util.extensions.nextNullableString
-import off.kys.ketabonline2epub.util.extensions.readUrlAsText
-import off.kys.ketabonline2epub.util.extensions.safeArray
-import off.kys.ketabonline2epub.util.extensions.safeInt
-import off.kys.ketabonline2epub.util.extensions.safeString
 import off.kys.ketabonline2epub.util.extensions.toPlainText
-import off.kys.ketabonline2epub.util.readTextFromUrl
+import off.kys.ketabonline2epub.util.extensions.toURL
 import off.kys.ketabonline2epub.util.unzip
 import java.io.FileReader
+import java.io.InputStreamReader
+import java.net.URL
 
 private const val TAG = "BookRepositoryImpl"
 
 class BookRepositoryImpl(
     private val context: Context
 ) : BookRepository {
+
+    // MARK: - Search Books
     override suspend fun searchBooks(query: String, page: Int): List<BookItem> {
         val books = mutableListOf<BookItem>()
         val apiUrl =
             "https://backend.ketabonline.com/api/v2/books?is_active=1&is_deleted=0&page=1&limit=20&q=${query.encodeUrl()}&scope=titles&sort_field=_score&sort_direction=DESC"
 
-        val jsonText = apiUrl.readUrlAsText()
-        val searchResult = JsonParser.parseString(jsonText).asJsonObject
-        val data = searchResult["data"].asJsonArray
-        val status = searchResult["status"].asBoolean
-        val code = searchResult["code"].asInt
+        val inputStream = withContext(Dispatchers.IO) { URL(apiUrl).openStream() }
 
-        if (!status || code != 200)
-            throw IllegalStateException("Search failed with status $status and code $code")
+        withContext(Dispatchers.IO) {
+            JsonReader(InputStreamReader(inputStream, "UTF-8")).use { reader ->
+                reader.beginObject()
+                var status = false
+                var code = 0
 
-        books += data.map {
-            val book = it.asJsonObject
-            val author = book["authors"]
-                ?.safeArray()
-                ?.joinToString { author -> author.asJsonObject["name"].asString }
-                ?: ""
+                while (reader.hasNext()) {
+                    when (reader.nextName()) {
+                        "status" -> status = reader.nextBoolean()
+                        "code" -> code = reader.nextInt()
+                        "data" -> {
+                            if (reader.peek() == JsonToken.BEGIN_ARRAY) {
+                                reader.beginArray()
+                                while (reader.hasNext()) {
+                                    books.add(readBookItem(reader))
+                                }
+                                reader.endArray()
+                            } else {
+                                reader.skipValue()
+                            }
+                        }
 
-            BookItem(
-                id = BookId(book["id"].asInt),
-                title = book["title"].asString,
-                author = author,
-                coverUrl = book["image_url"]?.safeString()
-            )
+                        else -> reader.skipValue()
+                    }
+                }
+                reader.endObject()
+
+                if (!status || code != 200) {
+                    throw IllegalStateException("Search failed with status $status and code $code")
+                }
+            }
         }
-
         return books
     }
 
+    // MARK: - Get Book Index
     override suspend fun getBookIndex(bookId: BookId): List<BookIndex> {
-        val bookIndices = mutableListOf<BookIndex>()
-        val url = "${Constants.API_BASE_URL}/books/${bookId.value}/index"
-
+        val url = "${Constants.API_BASE_URL}/books/${bookId.value}/index".toURL()
         Log.d(TAG, "Fetching index from: $url")
 
-        try {
-            val indexJson = readTextFromUrl(url)
-            val rootIndex = JsonParser.parseString(indexJson).asJsonObject
-            val status = rootIndex["status"].asBoolean
-            val code = rootIndex["code"].asInt
+        return try {
+            withContext(Dispatchers.IO) {
+                url.openStream().use { inputStream ->
+                    JsonReader(InputStreamReader(inputStream, Charsets.UTF_8)).use { reader ->
+                        val result = mutableListOf<BookIndex>()
+                        var status = false
+                        var code = 0
 
-            Log.d(TAG, "Index parsing. status: $status, code: $code")
+                        reader.beginObject()
 
-            Log.d(TAG, "Json text:\n $indexJson")
+                        while (reader.hasNext()) {
+                            when (reader.nextName()) {
+                                "status" -> status = reader.nextBoolean()
+                                "code" -> code = reader.nextInt()
+                                "data" -> {
+                                    if (reader.peek() == JsonToken.BEGIN_ARRAY) {
+                                        reader.beginArray()
+                                        while (reader.hasNext()) {
+                                            result.add(readBookIndex(reader))
+                                        }
+                                        reader.endArray()
+                                    } else {
+                                        reader.skipValue()
+                                    }
+                                }
 
-            if (!status || code != 200) {
-                Log.w(TAG, "Stopping index fetch. Status: $status, Code: $code")
-                return bookIndices
-            }
+                                else -> reader.skipValue()
+                            }
+                        }
+                        reader.endObject()
 
-            val data = rootIndex["data"].asJsonArray
+                        if (!status || code != 200) {
+                            Log.w(TAG, "Stopping index fetch. Status: $status, Code: $code")
+                            return@use emptyList()
+                        }
 
-            if (data.isEmpty) {
-                Log.w(TAG, "Stopping index fetch. Data is empty")
-                return bookIndices
-            }
-
-            data.forEach { index ->
-                val obj = index.asJsonObject
-
-                bookIndices += BookIndex(
-                    title = obj["title"].asString,
-                    pageId = obj["page_id"].asInt,
-                    page = obj["page"]?.safeInt() ?: run {
-                        Log.e(TAG, "Invalid page: ${obj["page"]}")
-                        bookIndices.lastOrNull()?.page ?: 1
-                    },
-                    part = obj["part_name"]?.safeString()?.toIntOrNull() ?: run {
-                        Log.e(TAG, "Invalid part name: ${obj["part_name"]}")
-                        1
+                        Log.d(TAG, "Parsed ${result.size} index items")
+                        result
                     }
-                )
-                Log.d(TAG, "Parsed index: ${bookIndices.last()}")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching index", e)
+            emptyList()
         }
-
-        return bookIndices
     }
 
+    // MARK: - Get Book Data
     override suspend fun getBookData(bookId: BookId): BookData {
-        val bookPages = mutableListOf<BookPage>()
         val zipPath = context.cacheDir("${bookId.value}.data.zip")
+        val dataUrl = "${Constants.STORAGE_BASE_URL}/${bookId.value}/${bookId.value}.data.zip"
 
         try {
-            val dataUrl = "${Constants.STORAGE_BASE_URL}/${bookId.value}/${bookId.value}.data.zip"
             Log.d(TAG, "Downloading data from: $dataUrl")
             downloadFile(dataUrl, zipPath.absolutePath)
 
-            val dataJsonPath =
-                unzip(zipPath) ?: throw RuntimeException("Failed to unzip book data.")
+            val dataJsonPath = unzip(zipPath)
+                ?: throw RuntimeException("Failed to unzip book data.")
 
             if (!dataJsonPath.exists()) {
                 throw IllegalStateException("Expected data file $dataJsonPath not found.")
@@ -137,100 +145,14 @@ class BookRepositoryImpl(
 
             Log.d(TAG, "Unzip successful. Streaming JSON data...")
 
-            // Local variables to hold data as we stream
-            var bookTitle = ""
-            var bookAuthor = ""
-            var pdfUrl: String? = null
-            var bookCover: String? = null
-            var bookDescription: String? = null
-            var bookInfo: String? = null
-
-            // Use JsonReader for streaming to prevent OOM
-            withContext(Dispatchers.IO) {
+            return withContext(Dispatchers.IO) {
                 JsonReader(FileReader(dataJsonPath)).use { reader ->
-                    reader.beginObject()
-                    while (reader.hasNext()) {
-                        when (reader.nextName()) {
-                            "title" -> bookTitle = reader.nextNullableString()
-                                ?: throw IllegalStateException("This book has no title")
-
-                            "description" -> bookDescription = reader.nextNullableString()
-                            "info" -> bookInfo = reader.nextNullableString() // This fixes the crash
-                            "image_file" -> bookCover = reader.nextNullableString()
-                            "authors" -> {
-                                val authors = mutableListOf<String>()
-                                reader.beginArray()
-                                while (reader.hasNext()) {
-                                    reader.beginObject()
-                                    while (reader.hasNext()) {
-                                        if (reader.nextName() == "name") {
-                                            authors += reader.nextNullableString() ?: context.getString(R.string.unknown_author)
-                                        } else {
-                                            reader.skipValue()
-                                        }
-                                    }
-                                    reader.endObject()
-                                }
-                                reader.endArray()
-                                bookAuthor = authors.joinToString()
-                            }
-
-                            "pages" -> {
-                                reader.beginArray()
-                                while (reader.hasNext()) {
-                                    val pageElement = JsonParser.parseReader(reader).asJsonObject
-                                    bookPages.add(parseBookPage(pageElement))
-                                }
-                                reader.endArray()
-                            }
-
-                            "files" -> {
-                                reader.beginObject()
-                                while (reader.hasNext()) {
-                                    if (reader.nextName() == "pdf") {
-                                        // Check if the value is NULL before proceeding
-                                        if (reader.peek() == JsonToken.NULL) {
-                                            reader.nextNull() // Consume the null value
-                                        } else {
-                                            reader.beginObject()
-                                            while (reader.hasNext()) {
-                                                if (reader.nextName() == "url") {
-                                                    pdfUrl = reader.nextNullableString()
-                                                } else {
-                                                    reader.skipValue()
-                                                }
-                                            }
-                                            reader.endObject()
-                                        }
-                                    } else {
-                                        reader.skipValue()
-                                    }
-                                }
-                                reader.endObject()
-                            }
-
-                            else -> reader.skipValue()
-                        }
-                    }
-                    reader.endObject()
+                    parseBookDataStream(reader)
                 }
+            }.also {
+                dataJsonPath.delete() // Cleanup
+                Log.d(TAG, "Book data parsed successfully")
             }
-
-            dataJsonPath.delete()
-
-            val bookData = BookData(
-                cover = Base64Image(bookCover),
-                description = bookDescription,
-                info = bookInfo,
-                author = bookAuthor,
-                title = bookTitle,
-                pages = bookPages,
-                pdfUrl = pdfUrl
-            )
-
-            Log.d(TAG, "Book data parsed: $bookData")
-
-            return bookData
 
         } catch (e: Exception) {
             Log.d(TAG, "Failed to retrieve book data", e)
@@ -238,25 +160,290 @@ class BookRepositoryImpl(
         }
     }
 
-    private fun parseBookPage(page: JsonObject): BookPage {
-        val pageId = page["id"].asInt
-        val pageIndex = page["page"].asInt
-        val pageContent = page["content"].asString.toPlainText()
+    // MARK: - Parsing Helpers
 
-        // Complex part parsing logic
-        val rawPart = page["part"]
-        val pagePart = when {
-            rawPart == null || rawPart.isJsonNull -> null
-            rawPart.isJsonObject -> rawPart.asJsonObject["name"]?.asString?.toIntOrNull()
-            rawPart.isJsonArray -> rawPart.asJsonArray.firstOrNull()?.asJsonObject?.get("name")?.asString?.toIntOrNull()
-            else -> null
-        } ?: 1
+    /**
+     * Reads a book page from the JSON reader.
+     *
+     * @param reader The JSON reader.
+     * @return The parsed book page.
+     */
+    private fun readBookPage(reader: JsonReader): BookPage {
+        var pageId = 0
+        var pageIndex = 0
+        var content = ""
+        var part: Int? = null
+
+        reader.beginObject()
+
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "id" -> pageId = reader.nextInt()
+                "page" -> pageIndex = reader.nextInt()
+                "content" -> content = reader.nextString().toPlainText()
+                "part" -> {
+                    part = when (reader.peek()) {
+                        JsonToken.NULL -> {
+                            reader.nextNull()
+                            null
+                        }
+
+                        JsonToken.BEGIN_OBJECT -> {
+                            readPartObject(reader)
+                        }
+
+                        JsonToken.BEGIN_ARRAY -> {
+                            reader.beginArray()
+                            val value = if (reader.hasNext()) readPartObject(reader) else null
+                            reader.endArray()
+                            value
+                        }
+
+                        else -> {
+                            reader.skipValue()
+                            null
+                        }
+                    }
+                }
+
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
 
         return BookPage(
             id = pageId,
-            part = pagePart,
+            part = part ?: 1,
             page = pageIndex,
-            content = pageContent
+            content = content
         )
     }
+
+    /**
+     * Reads a part object from the JSON reader.
+     *
+     * @param reader The JSON reader.
+     * @return The parsed part object.
+     */
+    private fun readPartObject(reader: JsonReader): Int? {
+        var part: Int? = null
+
+        reader.beginObject()
+        while (reader.hasNext()) {
+            if (reader.nextName() == "name") {
+                part = reader.nextNullableString()?.toIntOrNull()
+            } else {
+                reader.skipValue()
+            }
+        }
+        reader.endObject()
+
+        return part
+    }
+
+    /**
+     * Extracts the main logic for parsing the massive book data JSON file.
+     */
+    private fun parseBookDataStream(reader: JsonReader): BookData {
+        var bookTitle = ""
+        var bookAuthor = ""
+        var pdfUrl: String? = null
+        var bookCover: String? = null
+        var bookDescription: String? = null
+        var bookInfo: String? = null
+        val bookPages = mutableListOf<BookPage>()
+
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "title" -> bookTitle = reader.nextNullableString()
+                    ?: throw IllegalStateException("This book has no title")
+
+                "description" -> bookDescription = reader.nextNullableString()
+                "info" -> bookInfo = reader.nextNullableString()
+                "image_file" -> bookCover = reader.nextNullableString()
+                "authors" -> bookAuthor = readAuthors(reader)
+                "pages" -> {
+                    reader.beginArray()
+                    while (reader.hasNext()) {
+                        bookPages.add(readBookPage(reader))
+                    }
+                    reader.endArray()
+                }
+
+                "files" -> {
+                    // Reuse the logic to extract PDF url from 'files' object
+                    if (reader.peek() == JsonToken.BEGIN_OBJECT) {
+                        val foundUrl = readPdfUrl(reader)
+                        if (!foundUrl.isNullOrEmpty()) pdfUrl = foundUrl
+                    } else {
+                        reader.skipValue()
+                    }
+                }
+
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+
+        return BookData(
+            cover = Base64Image(bookCover),
+            description = bookDescription,
+            info = bookInfo,
+            author = bookAuthor,
+            title = bookTitle,
+            pages = bookPages,
+            pdfUrl = pdfUrl
+        )
+    }
+
+    /**
+     * Shared helper to parse book indexes.
+     * Looks for: "title": "Book Title",
+     *            "page_id": 123,
+     *            "page": 1,
+     *            "part_name": "Part 1"
+     *            "part": 1
+     */
+    private fun readBookIndex(reader: JsonReader): BookIndex {
+        var title = ""
+        var pageId = 0
+        var page = 1
+        var part = 1
+
+        reader.beginObject()
+
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "title" -> title = reader.nextString()
+                "page_id" -> pageId = reader.nextInt()
+                "page" -> {
+                    page = if (reader.peek() == JsonToken.NULL) {
+                        reader.nextNull()
+                        1
+                    } else {
+                        reader.nextInt()
+                    }
+                }
+
+                "part_name" -> part = reader.nextNullableString()?.toIntOrNull() ?: 1
+
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+
+        return BookIndex(
+            title = title,
+            pageId = pageId,
+            page = page,
+            part = part
+        )
+    }
+
+    /**
+     * Shared helper to parse book items.
+     * Looks for: "id": 123
+     *            "title": "Book Title"
+     *            "image_url": "https://example.com/cover.jpg"
+     *            "authors": [{"name": "Author 1"}, {"name": "Author 2"}]
+     *            "files": { "pdf": { "url": "https://example.com/book.pdf" } }
+     */
+    private fun readBookItem(reader: JsonReader): BookItem {
+        var id = 0
+        var title = ""
+        var authors = ""
+        var coverUrl: String? = null
+        var pdfAvailable = false
+
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "id" -> id = reader.nextInt()
+                "title" -> title = reader.nextString()
+                "image_url" -> coverUrl = if (reader.peek() == JsonToken.NULL) {
+                    @Suppress("KotlinConstantConditions")
+                    reader.nextNull().run { null }
+                } else {
+                    reader.nextString()
+                }
+
+                "authors" -> {
+                    if (reader.peek() == JsonToken.BEGIN_ARRAY) authors = readAuthors(reader)
+                    else reader.skipValue()
+                }
+
+                "files" -> {
+                    if (reader.peek() == JsonToken.BEGIN_OBJECT) pdfAvailable =
+                        !readPdfUrl(reader).isNullOrEmpty()
+                    else reader.skipValue()
+                }
+
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+
+        return BookItem(
+            id = BookId(id),
+            title = title,
+            author = authors,
+            coverUrl = coverUrl,
+            pdfAvailable = pdfAvailable
+        )
+    }
+
+    /**
+     * Shared helper to parse author arrays.
+     * Handles the specific structure: [{"name": "Author 1"}, {"name": "Author 2"}]
+     */
+    private fun readAuthors(reader: JsonReader): String {
+        val names = mutableListOf<String>()
+        reader.beginArray()
+        while (reader.hasNext()) {
+            reader.beginObject()
+            while (reader.hasNext()) {
+                if (reader.nextName() == "name") {
+                    reader.nextNullableString()?.let { names.add(it) }
+                        ?: context.getString(R.string.unknown_author).let { names.add(it) }
+                } else {
+                    reader.skipValue()
+                }
+            }
+            reader.endObject()
+        }
+        reader.endArray()
+        return names.joinToString(", ")
+    }
+
+    /**
+     * Shared helper to parse PDF URL from the "files" object.
+     * Looks for: "files": { "pdf": { "url": "..." } }
+     */
+    private fun readPdfUrl(reader: JsonReader): String? {
+        var pdfUrl: String? = null
+        reader.beginObject()
+        while (reader.hasNext()) {
+            if (reader.nextName() == "pdf") {
+                if (reader.peek() == JsonToken.NULL) {
+                    reader.nextNull()
+                } else {
+                    reader.beginObject()
+                    while (reader.hasNext()) {
+                        if (reader.nextName() == "url") {
+                            pdfUrl = reader.nextNullableString()
+                        } else {
+                            reader.skipValue()
+                        }
+                    }
+                    reader.endObject()
+                }
+            } else {
+                reader.skipValue()
+            }
+        }
+        reader.endObject()
+        return pdfUrl
+    }
+
 }

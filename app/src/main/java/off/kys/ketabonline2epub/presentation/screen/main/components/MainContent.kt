@@ -62,7 +62,9 @@ fun MainContent(
                 listState = listState,
                 downloadedBookIds = downloadTracker,
                 isInteractionEnabled = !isLoadingResults,
-                onDownloadClick = { viewModel.onEvent(MainUiEvent.OnDownloadClicked(it)) }
+                onDownloadClick = { type ->
+                    viewModel.onEvent(MainUiEvent.OnDownloadClicked(type))
+                }
             )
         }
     }

@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
@@ -22,6 +22,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +41,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import off.kys.ketabonline2epub.R
+import off.kys.ketabonline2epub.common.BookType
 import off.kys.ketabonline2epub.domain.model.BookItem
 import off.kys.ketabonline2epub.util.extensions.toPlainText
 
@@ -44,10 +49,14 @@ import off.kys.ketabonline2epub.util.extensions.toPlainText
 fun BookListItem(
     modifier: Modifier = Modifier,
     book: BookItem,
-    isDownloaded: Boolean = false,
+    isDownloaded: Pair<Boolean, Boolean>,
     enabled: Boolean = true,
-    onDownloadClick: () -> Unit
+    onDownloadClick: (BookType) -> Unit
 ) {
+    var downloadType: BookType by remember { mutableStateOf(BookType.EPUB(book.id)) }
+    val (isPdfDownloaded, isEpubDownloaded) = isDownloaded
+
+
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
@@ -75,7 +84,7 @@ fun BookListItem(
                             ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                         else null
                     )
-                    if (isDownloaded) {
+                    if (isEpubDownloaded && isPdfDownloaded) {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = RoundedCornerShape(topStart = 8.dp, bottomEnd = 8.dp),
@@ -111,28 +120,49 @@ fun BookListItem(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(
-                            8.dp
-                        )
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        AssistChip(
+                        // EPUB Chip
+                        FilterChip(
                             modifier = Modifier.padding(top = 4.dp),
-                            onClick = { /* info */ },
-                            label = { Text("EPUB", style = MaterialTheme.typography.labelSmall) },
+                            selected = downloadType is BookType.EPUB,
+                            onClick = { downloadType = BookType.EPUB(book.id) },
+                            label = {
+                                Text(stringResource(R.string.epub), style = MaterialTheme.typography.labelSmall)
+                            },
                             leadingIcon = {
                                 Icon(
-                                    painter = painterResource(R.drawable.round_description_24),
+                                    painter = painterResource(if (isEpubDownloaded) R.drawable.round_check_circle_24 else R.drawable.round_description_24),
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp)
                                 )
                             }
                         )
+
+                        // PDF Chip (Conditional)
+                        if (book.pdfAvailable) {
+                            FilterChip(
+                                modifier = Modifier.padding(top = 4.dp),
+                                selected = downloadType is BookType.PDF,
+                                onClick = { downloadType = BookType.PDF(book.id) },
+                                label = {
+                                    Text(stringResource(R.string.pdf), style = MaterialTheme.typography.labelSmall)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(if (isPdfDownloaded) R.drawable.round_check_circle_24 else R.drawable.round_description_24),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             },
             trailingContent = {
                 FilledTonalIconButton(
-                    onClick = onDownloadClick,
+                    onClick = { onDownloadClick(downloadType) },
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),

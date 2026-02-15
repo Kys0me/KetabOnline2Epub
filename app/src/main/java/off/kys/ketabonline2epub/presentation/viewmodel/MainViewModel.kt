@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import off.kys.github_app_updater.checkAppUpdate
 import off.kys.github_app_updater.common.ChangelogSource
 import off.kys.ketabonline2epub.BuildConfig
@@ -17,11 +18,17 @@ import off.kys.ketabonline2epub.R
 import off.kys.ketabonline2epub.common.BookType
 import off.kys.ketabonline2epub.common.Constants
 import off.kys.ketabonline2epub.data.repository.BookDownloadTracker
-import off.kys.ketabonline2epub.domain.model.BookItem
+import off.kys.ketabonline2epub.domain.model.BookId
 import off.kys.ketabonline2epub.domain.repository.BookRepository
 import off.kys.ketabonline2epub.domain.repository.EpubConverterRepository
 import off.kys.ketabonline2epub.presentation.event.MainUiEvent
 import off.kys.ketabonline2epub.presentation.state.MainUiState
+import off.kys.ketabonline2epub.util.downloadFile
+import off.kys.ketabonline2epub.util.extensions.getFileName
+import off.kys.ketabonline2epub.util.extensions.toURL
+import off.kys.ketabonline2epub.util.processJsonToPdf
+import off.kys.ketabonline2epub.util.unzip
+import java.io.File
 
 private const val TAG = "MainViewModel"
 
@@ -66,7 +73,9 @@ class MainViewModel(
             }
 
             MainUiEvent.OnSearchClicked -> searchBooks()
-            is MainUiEvent.OnDownloadClicked -> downloadBook(event.book)
+            is MainUiEvent.OnDownloadClicked -> downloadBook(
+                event.bookType
+            )
 
             // Resets the downloaded file state after the UI has handled the file (e.g., showed the saver)
             MainUiEvent.DownloadHandled -> _uiState.update { it.copy(downloadedFile = null) }
@@ -76,12 +85,7 @@ class MainViewModel(
                 _uiState.update { it.copy(isUpdateAvailable = false) }
             }
 
-            is MainUiEvent.MarkAsDownloaded -> {
-                bookDownloadTracker.saveBook(
-                    bookId = event.bookId,
-                    type = BookType.EPUB
-                )
-            }
+            is MainUiEvent.MarkAsDownloaded -> bookDownloadTracker.saveBook(book = event.bookType)
         }
     }
 
@@ -149,20 +153,19 @@ class MainViewModel(
         }
     }
 
-    /**
-     * orchestrates the multi-step process of converting a remote book to a local EPUB:
-     * 1. Fetches the book index (Table of Contents).
-     * 2. Fetches the book data (Actual pages/content).
-     * 3. Builds chapters using the converter repository.
-     * 4. Generates the final EPUB file.
-     */
-    private fun downloadBook(book: BookItem) {
+    private fun downloadBook(bookType: BookType) =
+        when (bookType) {
+            is BookType.EPUB -> downloadEpub(bookType.bookId)
+            is BookType.PDF -> downloadPdf(bookType.bookId)
+        }
+
+    private fun downloadEpub(bookId: BookId) {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 // Step 1 & 2: Data Acquisition
-                val bookIndex = bookRepository.getBookIndex(book.id)
-                val bookData = bookRepository.getBookData(book.id)
+                val bookIndex = bookRepository.getBookIndex(bookId)
+                val bookData = bookRepository.getBookData(bookId)
 
                 // Step 3: Transformation
                 val chapters = epubConverterRepository.buildChapters(
@@ -176,7 +179,7 @@ class MainViewModel(
 
                 _uiState.update {
                     it.copy(
-                        bookId = book.id,
+                        bookId = bookId,
                         isLoading = false,
                         downloadedFile = file,
                     )
@@ -187,6 +190,68 @@ class MainViewModel(
                     it.copy(
                         isLoading = false,
                         errorMessage = "Download failed: ${e.localizedMessage}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun downloadPdf(bookId: BookId) {
+        // Avoid launching multiple downloads for the same ID if already loading
+        if (_uiState.value.isLoading) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    // 1. Fetch metadata
+                    val bookData = bookRepository.getBookData(bookId)
+                    val pdfUrl =
+                        bookData.pdfUrl ?: throw IllegalArgumentException("PDF URL not found")
+
+                    // 2. Prepare file locations
+                    val pdfName = pdfUrl.toURL().getFileName() ?: "book_${bookId.value}"
+                    val tempFile = File(application.cacheDir, "$pdfName.zip")
+
+                    // 3. Download
+                    downloadFile(pdfUrl, tempFile.absolutePath)
+
+                    // 4. Processing (Unzip and Rename)
+                    val unzippedFile =
+                        unzip(tempFile) ?: throw IllegalStateException("Unzip failed")
+
+                    val jsonToPdf = processJsonToPdf(
+                        context = application,
+                        jsonFile = unzippedFile
+                    ) ?: throw IllegalStateException("JSON to PDF failed")
+
+                    val finalFile = File(application.cacheDir, "${bookData.title}.pdf")
+
+                    if (!jsonToPdf.renameTo(finalFile)) {
+                        throw IllegalStateException("Failed to move file to final destination")
+                    }
+
+                    // Cleanup temp file
+                    if (tempFile.exists()) tempFile.delete()
+                    if (jsonToPdf.exists()) jsonToPdf.delete()
+
+                    finalFile
+                }
+            }
+
+            result.onSuccess { file ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        downloadedFile = file
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.localizedMessage
                     )
                 }
             }

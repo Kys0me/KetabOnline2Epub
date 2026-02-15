@@ -9,7 +9,6 @@ import off.kys.ketabonline2epub.domain.model.BookId
 import org.junit.Test
 
 class BookRepositoryImplTest {
-
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val bookId = BookId(6157)
 
