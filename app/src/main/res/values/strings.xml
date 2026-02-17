@@ -22,4 +22,6 @@
     <string name="unknown_author" translatable="false">مجهول</string>
     <string name="pdf" translatable="false">PDF</string>
     <string name="epub" translatable="false">EPUB</string>
+    <string name="no_books_found">No books found</string>
+    <string name="try_adjusting_your_search_or_filters_to_find_what_you_re_looking_for">Try adjusting your search or filters to find what you\'re looking for.</string>
 </resources>

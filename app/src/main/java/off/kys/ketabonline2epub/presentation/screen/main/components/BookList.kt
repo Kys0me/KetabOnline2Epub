@@ -30,26 +30,33 @@ fun BookList(
     isInteractionEnabled: Boolean,
     onDownloadClick: (BookType, BookId) -> Unit
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        state = listState
-    ) {
-        items(
-            items = books,
-            key = { it.id.value }
-        ) { book ->
-            BookListItem(
-                book = book,
-                isDownloaded = viewModel::isBookDownloaded,
-                enabled = isInteractionEnabled,
-                onDownloadClick = { onDownloadClick(it, book.id) }
-            )
+    when {
+        books.isEmpty() -> {
+            EmptySearchPlaceholder()
         }
+        else -> {
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                state = listState
+            ) {
+                items(
+                    items = books,
+                    key = { it.id.value }
+                ) { book ->
+                    BookListItem(
+                        book = book,
+                        isDownloaded = viewModel::isBookDownloaded,
+                        enabled = isInteractionEnabled,
+                        onDownloadClick = { onDownloadClick(it, book.id) }
+                    )
+                }
 
-        // Only show the "End of results" if we actually have items in the list
-        if (books.isNotEmpty()) {
-            item {
-                SearchEndFooter()
+                // Only show the "End of results" if we actually have items in the list
+                if (books.isNotEmpty()) {
+                    item {
+                        SearchEndFooter()
+                    }
+                }
             }
         }
     }

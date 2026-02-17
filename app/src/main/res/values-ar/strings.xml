@@ -19,4 +19,6 @@
     <string name="search_by_book_title_author_name_to_get_started">ابدأ بالبحث عن طريق عنوان الكتاب أو اسم المؤلف.</string>
     <string name="searching_for_books">جاري البحث عن كتب…</string>
     <string name="you_ve_reached_the_end_of_the_results">نهاية نتائج البحث</string>
+    <string name="no_books_found">لم يتم العثور على كتب</string>
+    <string name="try_adjusting_your_search_or_filters_to_find_what_you_re_looking_for">جرّب تعديل البحث أو الفلاتر للعثور على ما تبحث عنه.</string>
 </resources>
