@@ -108,9 +108,9 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 checkAppUpdate {
-                    githubRepo(Constants.PROJECT_REPOSITORY_URL)
+                    githubRepo(Constants.PROJECT_REPOSITORY)
                     currentVersion(BuildConfig.VERSION_NAME)
-                    changelogSource(ChangelogSource.RELEASE_BODY)
+                    changelogSource(ChangelogSource.COMMITS)
                     onUpdateAvailable { result ->
                         _uiState.update {
                             it.copy(

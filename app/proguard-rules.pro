@@ -23,3 +23,18 @@
 # Ignore missing Gemalto JPEG2000 classes used by PdfBox-Android
 -dontwarn com.gemalto.jp2.JP2Decoder
 -dontwarn com.gemalto.jp2.JP2Encoder
+
+# Prevent Moshi from losing property names for GitHub models
+-keepclassmembers class off.kys.github_app_updater.model.github.** {
+    <fields>;
+    <init>(...);
+}
+
+# Keep the data classes and their members (fields/methods)
+-keep class off.kys.github_app_updater.model.github.** { *; }
+
+# Specifically prevent Moshi from losing the types inside Lists/Collections
+-keepattributes Signature, EnclosingMethod, InnerClasses, RuntimeVisibleAnnotations
+
+# For using Moshi's @Json annotations, keep those too
+-keepattributes RuntimeVisibleAnnotations, AnnotationDefault
