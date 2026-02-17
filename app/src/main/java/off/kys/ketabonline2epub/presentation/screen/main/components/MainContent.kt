@@ -13,7 +13,6 @@ import off.kys.ketabonline2epub.R
 import off.kys.ketabonline2epub.presentation.event.MainUiEvent
 import off.kys.ketabonline2epub.presentation.screen.components.ErrorScreen
 import off.kys.ketabonline2epub.presentation.screen.components.LoadingScreen
-import off.kys.ketabonline2epub.presentation.utils.rememberDownloadedBooks
 import off.kys.ketabonline2epub.presentation.viewmodel.MainViewModel
 
 @Composable
@@ -22,7 +21,6 @@ fun MainContent(
 ) {
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
-    val downloadTracker by rememberDownloadedBooks()
 
     // --- State Logic Helpers ---
     val errorMessage = state.errorMessage
@@ -60,12 +58,11 @@ fun MainContent(
             else -> BookList(
                 books = state.searchResults,
                 listState = listState,
-                downloadedBookIds = downloadTracker,
+                viewModel = viewModel,
                 isInteractionEnabled = !isLoadingResults,
-                onDownloadClick = { type ->
-                    viewModel.onEvent(MainUiEvent.OnDownloadClicked(type))
-                }
-            )
+            ) { type, id ->
+                viewModel.onEvent(MainUiEvent.OnDownloadClicked(type, id))
+            }
         }
     }
 }

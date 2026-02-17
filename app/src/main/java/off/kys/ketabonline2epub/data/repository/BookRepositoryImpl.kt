@@ -389,7 +389,7 @@ class BookRepositoryImpl(
             title = title,
             author = authors,
             coverUrl = coverUrl,
-            pdfAvailable = pdfAvailable
+            hasPdf = pdfAvailable
         )
     }
 

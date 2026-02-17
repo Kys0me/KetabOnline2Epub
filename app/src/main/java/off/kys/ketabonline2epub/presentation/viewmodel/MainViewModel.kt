@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,9 +18,9 @@ import off.kys.ketabonline2epub.BuildConfig
 import off.kys.ketabonline2epub.R
 import off.kys.ketabonline2epub.common.BookType
 import off.kys.ketabonline2epub.common.Constants
-import off.kys.ketabonline2epub.data.repository.BookDownloadTracker
 import off.kys.ketabonline2epub.domain.model.BookId
 import off.kys.ketabonline2epub.domain.repository.BookRepository
+import off.kys.ketabonline2epub.domain.repository.DownloadStatusRepository
 import off.kys.ketabonline2epub.domain.repository.EpubConverterRepository
 import off.kys.ketabonline2epub.presentation.event.MainUiEvent
 import off.kys.ketabonline2epub.presentation.state.MainUiState
@@ -42,7 +43,7 @@ class MainViewModel(
     private val application: Application,
     private val bookRepository: BookRepository,
     private val epubConverterRepository: EpubConverterRepository,
-    private val bookDownloadTracker: BookDownloadTracker
+    private val downloadStatus: DownloadStatusRepository
 ) : AndroidViewModel(application) {
 
     // Internal mutable state flow for UDF
@@ -74,7 +75,8 @@ class MainViewModel(
 
             MainUiEvent.OnSearchClicked -> searchBooks()
             is MainUiEvent.OnDownloadClicked -> downloadBook(
-                event.bookType
+                event.bookType,
+                event.bookId
             )
 
             // Resets the downloaded file state after the UI has handled the file (e.g., showed the saver)
@@ -85,10 +87,22 @@ class MainViewModel(
                 _uiState.update { it.copy(isUpdateAvailable = false) }
             }
 
-            is MainUiEvent.MarkAsDownloaded -> bookDownloadTracker.saveBook(book = event.bookType)
+            is MainUiEvent.MarkAsDownloaded -> {
+                downloadStatus.setDownloadStatus(bookType = event.bookType, bookId = event.bookId, isDownloaded = true)
+                Log.e(TAG, "MarkAsDownloaded: ${event.bookType}, ${event.bookId}")
+            }
         }
     }
 
+    /**
+     * Checks if a book has been downloaded.
+     *
+     * @param bookId The ID of the book.
+     * @param bookType The type of the book (EPUB or PDF).
+     *
+     * @return A [Flow] emitting a [Boolean] indicating whether the book has been downloaded.
+     */
+    fun isBookDownloaded( bookId: BookId, bookType: BookType): Flow<Boolean> = downloadStatus.observeDownloadStatus(bookId, bookType)
 
     private fun checkForUpdates() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -153,10 +167,10 @@ class MainViewModel(
         }
     }
 
-    private fun downloadBook(bookType: BookType) =
+    private fun downloadBook(bookType: BookType, bookId: BookId) =
         when (bookType) {
-            is BookType.EPUB -> downloadEpub(bookType.bookId)
-            is BookType.PDF -> downloadPdf(bookType.bookId)
+            is BookType.EPUB -> downloadEpub(bookId)
+            is BookType.PDF -> downloadPdf(bookId)
         }
 
     private fun downloadEpub(bookId: BookId) {

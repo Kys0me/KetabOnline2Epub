@@ -22,7 +22,6 @@ import off.kys.ketabonline2epub.common.file_saver.FileSaveResult
  * @param onResult Callback invoked when the save operation completes, is canceled, or fails.
  * @return An implementation of [ComposeFileSaver] to trigger the save dialog.
  */
-@Suppress("AssignedValueIsNeverRead")
 @Composable
 fun rememberFileSaver(
     onResult: (FileSaveResult) -> Unit = {}
@@ -33,11 +32,11 @@ fun rememberFileSaver(
     var pendingData by remember { mutableStateOf<ByteArray?>(null) }
 
     // Tracks the MIME type for the CreateDocument intent
-    var currentMimeType by remember { mutableStateOf(DocumentType.BINARY.mimeType) }
+    val currentMimeType = remember { mutableStateOf(DocumentType.BINARY.mimeType) }
 
     // Registers the system dialog launcher
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument(currentMimeType)
+        contract = ActivityResultContracts.CreateDocument(currentMimeType.value)
     ) { uri: Uri? ->
         if (uri == null) {
             onResult(FileSaveResult.Cancelled)
@@ -51,6 +50,7 @@ fun rememberFileSaver(
                 onResult(FileSaveResult.Success)
             } ?: throw Exception("Could not open output stream")
         } catch (e: Exception) {
+            e.printStackTrace()
             onResult(FileSaveResult.Error(e.localizedMessage ?: "Unknown Error"))
         } finally {
             // Clear the data from memory after the operation finishes
@@ -63,7 +63,7 @@ fun rememberFileSaver(
         object : ComposeFileSaver {
             override fun save(fileName: String, type: DocumentType, data: ByteArray) {
                 pendingData = data
-                currentMimeType = type.mimeType
+                currentMimeType.value = type.mimeType
                 launcher.launch(fileName)
             }
         }

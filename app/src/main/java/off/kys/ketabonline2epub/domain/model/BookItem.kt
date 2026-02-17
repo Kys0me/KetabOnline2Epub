@@ -5,5 +5,5 @@ data class BookItem(
     val title: String,
     val author: String,
     val coverUrl: String?,
-    val pdfAvailable: Boolean
+    val hasPdf: Boolean
 )

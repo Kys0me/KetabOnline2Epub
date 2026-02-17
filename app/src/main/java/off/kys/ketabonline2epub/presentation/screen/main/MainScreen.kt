@@ -31,27 +31,31 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
     val saveBook = rememberFileSaver { result ->
         when (result) {
             FileSaveResult.Success -> {
-                val extension = state.downloadedFile!!.extension
+                val extension = state.downloadedFile?.extension ?: throw IllegalStateException("The downloaded file was not supposed to be null")
                 when(extension.lowercase()) {
-                    "pdf" -> viewModel.onEvent(MainUiEvent.MarkAsDownloaded(BookType.PDF(state.bookId)))
-                    "epub" -> viewModel.onEvent(MainUiEvent.MarkAsDownloaded(BookType.PDF(state.bookId)))
+                    "pdf" -> viewModel.onEvent(MainUiEvent.MarkAsDownloaded(BookType.PDF, state.bookId))
+                    "epub" -> viewModel.onEvent(MainUiEvent.MarkAsDownloaded(BookType.EPUB, state.bookId))
                     else -> Log.w(TAG, "MainScreen: Unknown file extension")
                 }
+                Log.d(TAG, "MainScreen: File saved successfully")
             }
-            else -> Log.w(TAG, "MainScreen: File saving failed")
+            is FileSaveResult.Error -> Log.e(TAG, "MainScreen: File saving failed. Error: ${result.message}")
+            FileSaveResult.Cancelled -> Log.w(TAG, "MainScreen: File saving cancelled")
         }
+        viewModel.onEvent(MainUiEvent.DownloadHandled)
     }
     val isDownloading = state.isLoading && state.searchResults.isNotEmpty()
 
     // Handle File Saving Side Effect
     LaunchedEffect(key1 = state.downloadedFile) {
         state.downloadedFile?.let { file ->
+            Log.d(TAG, "MainScreen: Saving file ${file.name}")
+            Log.d(TAG, "MainScreen: File ${file.absolutePath} exists: ${file.exists()}")
             saveBook.save(
                 fileName = "${state.bookId.value} - ${file.name}".removePrefix("-").trim(),
                 type = DocumentType.EPUB,
                 data = file.readBytes()
             )
-            viewModel.onEvent(MainUiEvent.DownloadHandled)
         }
     }
 

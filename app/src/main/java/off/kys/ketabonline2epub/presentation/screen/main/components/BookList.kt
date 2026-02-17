@@ -7,16 +7,28 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import off.kys.ketabonline2epub.common.BookType
+import off.kys.ketabonline2epub.domain.model.BookId
 import off.kys.ketabonline2epub.domain.model.BookItem
+import off.kys.ketabonline2epub.presentation.viewmodel.MainViewModel
 
+/**
+ * A composable that displays a list of books.
+ *
+ * @param modifier The modifier to be applied to the layout.
+ * @param books The list of books to display.
+ * @param listState The state of the lazy list.
+ * @param viewModel The main view model.
+ * @param isInteractionEnabled A flag indicating whether interaction is enabled.
+ * @param onDownloadClick A callback that is invoked when a download button is clicked.
+ */
 @Composable
 fun BookList(
+    modifier: Modifier = Modifier,
     books: List<BookItem>,
     listState: LazyListState,
-    downloadedBookIds: Map<String, BookType>,
+    viewModel: MainViewModel,
     isInteractionEnabled: Boolean,
-    onDownloadClick: (BookType) -> Unit,
-    modifier: Modifier = Modifier
+    onDownloadClick: (BookType, BookId) -> Unit
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -26,14 +38,11 @@ fun BookList(
             items = books,
             key = { it.id.value }
         ) { book ->
-            val isEPUBDownloaded = downloadedBookIds.containsKey("${book.id}_${BookType.EPUB.NAME}")
-            val isPDFDownloaded = downloadedBookIds.containsKey("${book.id}_${BookType.PDF.NAME}")
-
             BookListItem(
                 book = book,
-                isDownloaded = isEPUBDownloaded to isPDFDownloaded,
+                isDownloaded = viewModel::isBookDownloaded,
                 enabled = isInteractionEnabled,
-                onDownloadClick = { onDownloadClick(it) }
+                onDownloadClick = { onDownloadClick(it, book.id) }
             )
         }
 
